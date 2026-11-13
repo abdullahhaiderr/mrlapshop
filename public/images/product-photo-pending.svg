@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" role="img" aria-labelledby="title desc">
+  <title id="title">Product photo pending</title>
+  <desc id="desc">A simple laptop outline on a warm neutral background.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#faf9f4"/><stop offset="1" stop-color="#f0f1f4"/></linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#e9edf3"/></linearGradient>
+  </defs>
+  <rect width="960" height="720" rx="30" fill="url(#bg)"/>
+  <circle cx="480" cy="332" r="205" fill="#ffe600" opacity=".13"/>
+  <rect x="270" y="202" width="420" height="278" rx="18" fill="#19233a"/>
+  <rect x="285" y="217" width="390" height="248" rx="10" fill="url(#screen)"/>
+  <path d="M225 496h510l-42 31H267z" fill="#27334b"/>
+  <path d="M408 497h144l-13 12h-118z" fill="#69758a" opacity=".7"/>
+  <circle cx="480" cy="208" r="3" fill="#7b8799"/>
+  <path d="M330 365h300" stroke="#d4dbe5" stroke-width="10" stroke-linecap="round"/>
+  <path d="M370 395h220" stroke="#e0e5ec" stroke-width="8" stroke-linecap="round"/>
+  <rect x="390" y="550" width="180" height="5" rx="3" fill="#bdc4ce" opacity=".7"/>
+</svg>

@@ -1,0 +1,10 @@
+Mr LapShop 2.0.2 — Hero / Header / YouTube video fix candidate
+
+Archive excludes .env.local, node_modules and build output.
+Environment template: .env.example
+Supabase migrations included: 10 (live project verified through 20261111173032)
+Customer Shorts configured: 4 (src/config/customer-video-reviews.ts)
+Admin video manager: not included; video list is source-configured in this release.
+Production deployment: NOT performed
+Resend notification delivery: NOT live until RESEND_API_KEY and verified RESEND_FROM_EMAIL are configured.
+Build and full browser QA: NOT completed; npm installation timed out in the build environment.
