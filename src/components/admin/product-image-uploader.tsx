@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type PendingImage = { file: File; altText: string; error?: string };
+type PendingImage = { id: string; file: File; altText: string; error?: string };
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -24,6 +24,7 @@ export function ProductImageUploader({ productId }: { productId: string }) {
       return;
     }
     setPendingImages(files.map((file) => ({
+      id: crypto.randomUUID(),
       file,
       altText: "",
       error: !ALLOWED_TYPES.has(file.type)
@@ -34,8 +35,16 @@ export function ProductImageUploader({ productId }: { productId: string }) {
     })));
   }
 
-  function updateAltText(index: number, altText: string) {
-    setPendingImages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, altText, error: item.error } : item));
+  function updateAltText(id: string, altText: string) {
+    setPendingImages((current) => current.map((item) => item.id === id ? { ...item, altText } : item));
+  }
+
+  async function hasValidImageSignature(file: File) {
+    const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    if (file.type === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    if (file.type === "image/png") return [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((value, index) => bytes[index] === value);
+    if (file.type === "image/webp") return String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+    return false;
   }
 
   async function uploadSelectedImages() {
@@ -67,6 +76,10 @@ export function ProductImageUploader({ productId }: { productId: string }) {
 
       let nextPosition = (latestImage?.position ?? -1) + 1;
       for (const item of pendingImages) {
+        if (!(await hasValidImageSignature(item.file))) {
+          setPendingImages((current) => current.map((pending) => pending.id === item.id ? { ...pending, error: "The file content does not match its image type." } : pending));
+          throw new Error(`${item.file.name} is not a valid JPEG, PNG or WebP image. Choose a genuine image file.`);
+        }
         const extension = item.file.type === "image/jpeg" ? "jpg" : item.file.type === "image/png" ? "png" : "webp";
         const storagePath = `${productId}/${crypto.randomUUID()}.${extension}`;
         const { error: uploadError } = await supabase.storage
@@ -92,6 +105,7 @@ export function ProductImageUploader({ productId }: { productId: string }) {
 
         nextPosition += 1;
         uploaded += 1;
+        setPendingImages((current) => current.filter((pending) => pending.id !== item.id));
       }
 
       setPendingImages([]);
@@ -99,7 +113,7 @@ export function ProductImageUploader({ productId }: { productId: string }) {
       router.refresh();
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : "An unexpected upload error occurred.";
-      setError(uploaded ? `${uploaded} image(s) uploaded. ${detail}` : detail);
+      setError(uploaded ? `${uploaded} image(s) uploaded. The remaining selected photos were not lost. ${detail}` : detail);
       if (uploaded) router.refresh();
     } finally {
       setUploading(false);
@@ -122,8 +136,8 @@ export function ProductImageUploader({ productId }: { productId: string }) {
 
       {pendingImages.length > 0 && (
         <div className="admin-pending-images">
-          {pendingImages.map((item, index) => (
-            <div className="admin-pending-image" key={`${item.file.name}-${item.file.lastModified}-${index}`}>
+          {pendingImages.map((item) => (
+            <div className="admin-pending-image" key={item.id}>
               <div><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(2)} MB</small></div>
               <label className="admin-field">
                 <span>Describe this photo *</span>
@@ -132,7 +146,7 @@ export function ProductImageUploader({ productId }: { productId: string }) {
                   maxLength={180}
                   minLength={4}
                   placeholder="e.g. Dell Latitude 5550 front view"
-                  onChange={(event) => updateAltText(index, event.currentTarget.value)}
+                  onChange={(event) => updateAltText(item.id, event.currentTarget.value)}
                   disabled={uploading}
                 />
               </label>
