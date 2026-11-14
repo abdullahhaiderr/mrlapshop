@@ -8,4 +8,4 @@ Disallow: /enquiry
 Disallow: /wishlist
 Disallow: /order
 
-Sitemap: https://mrlapshop.vercel.app/sitemap.xml
+Sitemap: https://mrlapshop.pk/sitemap.xml
