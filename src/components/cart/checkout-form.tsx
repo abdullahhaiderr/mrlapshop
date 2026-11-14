@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LockKeyhole, PackageCheck, PhoneCall, ShieldCheck } from "lucide-react";
-import { placeOrderAction, type CheckoutState } from "@/app/checkout/actions";
+import { placeOrderAction, validatePromoCodeAction, type CheckoutState } from "@/app/checkout/actions";
 import { useStorefront } from "@/components/providers/storefront-provider";
 import type { StoredCartItem } from "@/lib/local-commerce";
 
@@ -18,6 +18,9 @@ export type CheckoutSettings = {
   cash_on_delivery_enabled: boolean;
   bank_transfer_enabled: boolean;
   cash_at_pickup_enabled: boolean;
+  jazzcash_enabled: boolean;
+  easypaisa_enabled: boolean;
+  ubl_bank_enabled: boolean;
 };
 
 type SavedAddress = { id: string; label: string; recipient_name: string; phone: string; city: string; address_line: string; postal_code: string | null; is_default: boolean };
@@ -39,6 +42,7 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
   const router = useRouter();
   const { cartItems, clearCart } = useStorefront();
   const [state, formAction, pending] = useActionState(placeOrderAction, initialState);
+  const [promoState, promoFormAction, checkingPromo] = useActionState(validatePromoCodeAction, {});
   const defaultAddress = savedAddresses.find((address) => address.is_default) ?? savedAddresses[0];
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddress?.id ?? "");
   const [addressFields, setAddressFields] = useState({ city: defaultAddress?.city ?? "", postalCode: defaultAddress?.postal_code ?? "", addressLine: defaultAddress?.address_line ?? "", customerName: defaultAddress?.recipient_name ?? "", phone: defaultAddress?.phone ?? "" });
@@ -47,13 +51,16 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
     ...(settings?.delivery_enabled ? [{ value: "delivery", label: "Home Delivery" }] : []),
     ...(settings?.pickup_enabled ? [{ value: "pickup", label: "Shop Pickup" }] : []),
   ];
-  const checkoutReady = Boolean(settings?.checkout_enabled && validProductIds && cartItems.length > 0 && fulfillmentChoices.length > 0);
+  const availablePaymentChoices = paymentChoices.filter((choice) => choice.value === "jazzcash" ? Boolean(settings?.jazzcash_enabled) : choice.value === "easypaisa" ? Boolean(settings?.easypaisa_enabled) : Boolean(settings?.ubl_bank_enabled));
+  const checkoutReady = Boolean(settings?.checkout_enabled && validProductIds && cartItems.length > 0 && fulfillmentChoices.length > 0 && availablePaymentChoices.length > 0);
   const checkoutBlocker = !cartItems.length || !validProductIds
     ? "Your cart must contain real, published products with confirmed prices and available stock. Sample listings cannot be ordered."
     : !settings?.checkout_enabled
       ? "Order requests are temporarily unavailable. Please contact the shop on WhatsApp."
       : !fulfillmentChoices.length
         ? "The shop is not accepting delivery or pickup requests right now."
+        : !availablePaymentChoices.length
+        ? "The shop has not enabled a payment method yet. Please contact the shop."
         : "Order requests are not available right now. Please contact the shop.";
 
   useEffect(() => {
@@ -90,12 +97,18 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
       <section className="checkout-form-section-v15">
         <span className="eyebrow">03 · PREFERRED PAYMENT METHOD</span><h2>How would you prefer to pay?</h2>
         <div className="checkout-choice-grid-v15 payment-method-grid-v20">
-          {paymentChoices.map((choice, index) => <label className="payment-choice-v20" key={choice.value}>
+          {availablePaymentChoices.map((choice, index) => <label className="payment-choice-v20" key={choice.value}>
             <input type="radio" name="paymentMethod" value={choice.value} defaultChecked={index === 0} required />
             <span className="payment-choice-content-v20"><PaymentWordmark value={choice.value}/><span className="payment-choice-copy"><strong>{choice.label}</strong><small>{choice.sub}</small></span></span>
           </label>)}
         </div>
         <div className="checkout-policy-callout"><ShieldCheck size={19}/><div><strong>Full payment is required before order confirmation.</strong><p>Submitting this form does not charge you or confirm your order. The shop will call you, confirm the final amount and availability, then share payment instructions and any requested product pictures or shop details through WhatsApp. Do not transfer money until the shop has contacted you.</p></div></div>
+        <div className="checkout-promo-box">
+          <label className="checkout-notes-v15">Promo code <span>(optional)</span><input name="promoCode" type="text" maxLength={32} autoCapitalize="characters" autoComplete="off" placeholder="Enter your promo code" /></label>
+          <button className="button button-outline" type="submit" formAction={promoFormAction} disabled={checkingPromo || !cartItems.length}>{checkingPromo ? "Checking…" : "Apply code"}</button>
+          {promoState.message && <p className={promoState.valid ? "form-feedback form-feedback-success" : "form-feedback form-feedback-error"} role="status">{promoState.message}</p>}
+          {promoState.valid && <p className="checkout-promo-savings">Your discount: Rs. {Number(promoState.discountPkr ?? 0).toLocaleString("en-PK")}</p>}
+        </div>
         <label className="checkout-notes-v15">Order notes <span>(optional)</span><textarea name="customerNotes" rows={3} maxLength={1000} placeholder="Anything the shop should know?" /></label>
       </section>
 
