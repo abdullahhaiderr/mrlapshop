@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { store } from "@/config/store";
 import type { CatalogueSnapshot } from "@/lib/catalogue";
+import type { PublicVideoTestimonial } from "@/lib/testimonials";
 import { ProductCard } from "@/components/product/product-card";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { CustomerVideoSection } from "@/components/home/customer-video-section";
@@ -77,7 +78,7 @@ const brandTiles = [
   { name: "Chromebook", label: "Chromebooks", href: "/shop?category=chromebook" },
 ];
 
-export function HomePage({ catalogue }: { catalogue: CatalogueSnapshot }) {
+export function HomePage({ catalogue, testimonials }: { catalogue: CatalogueSnapshot; testimonials: PublicVideoTestimonial[] }) {
   const featuredProducts = (catalogue.products.filter((product) => product.featured).length ? catalogue.products.filter((product) => product.featured) : catalogue.products).slice(0, 8);
   const isLiveCatalogue = catalogue.mode === "live";
   const latestArrivals = isLiveCatalogue ? catalogue.products : [];
@@ -186,7 +187,7 @@ export function HomePage({ catalogue }: { catalogue: CatalogueSnapshot }) {
         </div>
       </section>
 
-      <CustomerVideoSection />
+      <CustomerVideoSection videos={testimonials} />
 
       <section className="section-block faq-section">
         <div className="container faq-layout">
