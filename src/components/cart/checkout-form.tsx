@@ -10,6 +10,8 @@ import { useStorefront } from "@/components/providers/storefront-provider";
 import type { StoredCartItem } from "@/lib/local-commerce";
 
 const initialState: CheckoutState = {};
+const CHECKOUT_ATTEMPT_STORAGE_KEY = "mr-lapshop-checkout-attempt-v1";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export type CheckoutSettings = {
   checkout_enabled: boolean;
   pickup_enabled: boolean;
@@ -42,6 +44,47 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
   const router = useRouter();
   const { cartItems, clearCart } = useStorefront();
   const [state, formAction, pending] = useActionState(placeOrderAction, initialState);
+  const cartSignature = JSON.stringify(cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity })));
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+
+  function rotateIdempotencyKey() {
+    const nextKey = crypto.randomUUID();
+    setIdempotencyKey(nextKey);
+    try {
+      window.localStorage.setItem(CHECKOUT_ATTEMPT_STORAGE_KEY, JSON.stringify({ cartSignature, key: nextKey }));
+    } catch {
+      // The in-memory key still protects retries during this page visit if storage is unavailable.
+    }
+  }
+
+  /* eslint-disable react-hooks/set-state-in-effect -- localStorage is only available after the component mounts. */
+  useEffect(() => {
+    let savedKey = "";
+    try {
+      const raw = window.localStorage.getItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { cartSignature?: string; key?: string };
+        if (saved.cartSignature === cartSignature && saved.key && UUID_PATTERN.test(saved.key)) {
+          savedKey = saved.key;
+        }
+      }
+    } catch {
+      // Continue with a fresh one-time key when browser storage is unavailable or invalid.
+    }
+
+    if (savedKey) {
+      setIdempotencyKey(savedKey);
+    } else {
+      const nextKey = crypto.randomUUID();
+      setIdempotencyKey(nextKey);
+      try {
+        window.localStorage.setItem(CHECKOUT_ATTEMPT_STORAGE_KEY, JSON.stringify({ cartSignature, key: nextKey }));
+      } catch {
+        // The in-memory key remains available for this visit.
+      }
+    }
+  }, [cartSignature]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const [promoState, promoFormAction, checkingPromo] = useActionState(validatePromoCodeAction, {});
   const defaultAddress = savedAddresses.find((address) => address.is_default) ?? savedAddresses[0];
   const [selectedAddressId, setSelectedAddressId] = useState(defaultAddress?.id ?? "");
@@ -52,10 +95,12 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
     ...(settings?.pickup_enabled ? [{ value: "pickup", label: "Shop Pickup" }] : []),
   ];
   const availablePaymentChoices = paymentChoices.filter((choice) => choice.value === "jazzcash" ? Boolean(settings?.jazzcash_enabled) : choice.value === "easypaisa" ? Boolean(settings?.easypaisa_enabled) : Boolean(settings?.ubl_bank_enabled));
-  const checkoutReady = Boolean(settings?.checkout_enabled && validProductIds && cartItems.length > 0 && fulfillmentChoices.length > 0 && availablePaymentChoices.length > 0);
+  const checkoutReady = Boolean(idempotencyKey && settings?.checkout_enabled && validProductIds && cartItems.length > 0 && fulfillmentChoices.length > 0 && availablePaymentChoices.length > 0);
   const checkoutBlocker = !cartItems.length || !validProductIds
     ? "Your cart must contain real, published products with confirmed prices and available stock. Sample listings cannot be ordered."
-    : !settings?.checkout_enabled
+    : !idempotencyKey
+      ? "Preparing a secure checkout request. Please wait a moment."
+      : !settings?.checkout_enabled
       ? "Order requests are temporarily unavailable. Please contact the shop on WhatsApp."
       : !fulfillmentChoices.length
         ? "The shop is not accepting delivery or pickup requests right now."
@@ -65,31 +110,37 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
 
   useEffect(() => {
     if (!state.orderNumber) return;
+    try {
+      window.localStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+    } catch {
+      // Order submission already succeeded; storage cleanup must not block confirmation.
+    }
     clearCart();
     router.push(`/order/${state.orderNumber}`);
   }, [state.orderNumber, clearCart, router]);
 
   return (
     <form action={formAction} className="checkout-form-v15">
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       <input type="hidden" name="itemsJson" value={JSON.stringify(cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity })))} />
       <section className="checkout-form-section-v15">
         <span className="eyebrow">01 · CONTACT DETAILS</span><h2>Who should we contact?</h2>
         <div className="checkout-fields-v15">
-          <label>Full name<input name="customerName" autoComplete="name" minLength={2} maxLength={120} required value={addressFields.customerName} onChange={(event) => setAddressFields((current) => ({ ...current, customerName: event.target.value }))} /></label>
-          <label>Phone / WhatsApp number<input name="phone" type="tel" autoComplete="tel" minLength={7} maxLength={30} required value={addressFields.phone} onChange={(event) => setAddressFields((current) => ({ ...current, phone: event.target.value }))} /></label>
-          <label className="checkout-field-wide-v15">Email address<input name="email" type="email" autoComplete="email" maxLength={254} required defaultValue={customerEmail} /></label>
+          <label>Full name<input name="customerName" autoComplete="name" minLength={2} maxLength={120} required value={addressFields.customerName} onChange={(event) => { if (!pending) rotateIdempotencyKey(); setAddressFields((current) => ({ ...current, customerName: event.target.value })); }} /></label>
+          <label>Phone / WhatsApp number<input name="phone" type="tel" autoComplete="tel" minLength={7} maxLength={30} required value={addressFields.phone} onChange={(event) => { if (!pending) rotateIdempotencyKey(); setAddressFields((current) => ({ ...current, phone: event.target.value })); }} /></label>
+          <label className="checkout-field-wide-v15">Email address<input name="email" type="email" autoComplete="email" maxLength={254} required defaultValue={customerEmail} onChange={() => { if (!pending) rotateIdempotencyKey(); }} /></label>
         </div>
         <p className="checkout-account-hint-v15">Already have an account? <Link href="/account/login?next=/checkout">Sign in</Link>. You can also submit this request as a guest.</p>
       </section>
 
       <section className="checkout-form-section-v15">
         <span className="eyebrow">02 · DELIVERY OR PICKUP</span><h2>How would you like to receive it?</h2>
-        {fulfillmentChoices.length ? <div className="checkout-choice-grid-v15">{fulfillmentChoices.map((choice, index) => <label key={choice.value}><input type="radio" name="fulfillment" value={choice.value} defaultChecked={index === 0} required /><span>{choice.label}</span></label>)}</div> : <p className="checkout-setup-message-v15">Delivery and pickup are currently unavailable.</p>}
-        {savedAddresses.length > 0 && <label className="checkout-saved-address-v17">Use a saved address<select value={selectedAddressId} onChange={(event) => { const selected = savedAddresses.find((address) => address.id === event.target.value); setSelectedAddressId(event.target.value); if (selected) setAddressFields((current) => ({ ...current, city: selected.city, postalCode: selected.postal_code ?? "", addressLine: selected.address_line, customerName: selected.recipient_name, phone: selected.phone })); else setAddressFields((current) => ({ ...current, city: "", postalCode: "", addressLine: "" })); }}><option value="">Enter a new address</option>{savedAddresses.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.city}{address.is_default ? " · Default" : ""}</option>)}</select></label>}
+        {fulfillmentChoices.length ? <div className="checkout-choice-grid-v15">{fulfillmentChoices.map((choice, index) => <label key={choice.value}><input type="radio" name="fulfillment" value={choice.value} defaultChecked={index === 0} required onChange={() => { if (!pending) rotateIdempotencyKey(); }} /><span>{choice.label}</span></label>)}</div> : <p className="checkout-setup-message-v15">Delivery and pickup are currently unavailable.</p>}
+        {savedAddresses.length > 0 && <label className="checkout-saved-address-v17">Use a saved address<select value={selectedAddressId} onChange={(event) => { if (!pending) rotateIdempotencyKey(); const selected = savedAddresses.find((address) => address.id === event.target.value); setSelectedAddressId(event.target.value); if (selected) setAddressFields((current) => ({ ...current, city: selected.city, postalCode: selected.postal_code ?? "", addressLine: selected.address_line, customerName: selected.recipient_name, phone: selected.phone })); else setAddressFields((current) => ({ ...current, city: "", postalCode: "", addressLine: "" })); }}><option value="">Enter a new address</option>{savedAddresses.map((address) => <option key={address.id} value={address.id}>{address.label} · {address.city}{address.is_default ? " · Default" : ""}</option>)}</select></label>}
         <div className="checkout-fields-v15">
-          <label>City<input name="city" autoComplete="address-level2" maxLength={100} placeholder="Required for home delivery" value={addressFields.city} onChange={(event) => setAddressFields((current) => ({ ...current, city: event.target.value }))} /></label>
-          <label>Postal code<input name="postalCode" autoComplete="postal-code" maxLength={20} value={addressFields.postalCode} onChange={(event) => setAddressFields((current) => ({ ...current, postalCode: event.target.value }))} /></label>
-          <label className="checkout-field-wide-v15">Complete delivery address<textarea name="addressLine" autoComplete="street-address" rows={3} maxLength={500} placeholder="Street, building, area and nearby landmark" value={addressFields.addressLine} onChange={(event) => setAddressFields((current) => ({ ...current, addressLine: event.target.value }))} /></label>
+          <label>City<input name="city" autoComplete="address-level2" maxLength={100} placeholder="Required for home delivery" value={addressFields.city} onChange={(event) => { if (!pending) rotateIdempotencyKey(); setAddressFields((current) => ({ ...current, city: event.target.value })); }} /></label>
+          <label>Postal code<input name="postalCode" autoComplete="postal-code" maxLength={20} value={addressFields.postalCode} onChange={(event) => { if (!pending) rotateIdempotencyKey(); setAddressFields((current) => ({ ...current, postalCode: event.target.value })); }} /></label>
+          <label className="checkout-field-wide-v15">Complete delivery address<textarea name="addressLine" autoComplete="street-address" rows={3} maxLength={500} placeholder="Street, building, area and nearby landmark" value={addressFields.addressLine} onChange={(event) => { if (!pending) rotateIdempotencyKey(); setAddressFields((current) => ({ ...current, addressLine: event.target.value })); }} /></label>
         </div>
         <p className="checkout-account-hint-v15">For home delivery, the shop will confirm delivery coverage and any delivery charges by phone or WhatsApp before confirming the order.</p>
       </section>
@@ -98,18 +149,18 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
         <span className="eyebrow">03 · PREFERRED PAYMENT METHOD</span><h2>How would you prefer to pay?</h2>
         <div className="checkout-choice-grid-v15 payment-method-grid-v20">
           {availablePaymentChoices.map((choice, index) => <label className="payment-choice-v20" key={choice.value}>
-            <input type="radio" name="paymentMethod" value={choice.value} defaultChecked={index === 0} required />
+            <input type="radio" name="paymentMethod" value={choice.value} defaultChecked={index === 0} required onChange={() => { if (!pending) rotateIdempotencyKey(); }} />
             <span className="payment-choice-content-v20"><PaymentWordmark value={choice.value}/><span className="payment-choice-copy"><strong>{choice.label}</strong><small>{choice.sub}</small></span></span>
           </label>)}
         </div>
         <div className="checkout-policy-callout"><ShieldCheck size={19}/><div><strong>Full payment is required before order confirmation.</strong><p>Submitting this form does not charge you or confirm your order. The shop will call you, confirm the final amount and availability, then share payment instructions and any requested product pictures or shop details through WhatsApp. Do not transfer money until the shop has contacted you.</p></div></div>
         <div className="checkout-promo-box">
-          <label className="checkout-notes-v15">Promo code <span>(optional)</span><input name="promoCode" type="text" maxLength={32} autoCapitalize="characters" autoComplete="off" placeholder="Enter your promo code" /></label>
+          <label className="checkout-notes-v15">Promo code <span>(optional)</span><input name="promoCode" type="text" maxLength={32} autoCapitalize="characters" autoComplete="off" placeholder="Enter your promo code" onChange={() => { if (!pending) rotateIdempotencyKey(); }} /></label>
           <button className="button button-outline" type="submit" formAction={promoFormAction} formNoValidate disabled={checkingPromo || !cartItems.length}>{checkingPromo ? "Checking…" : "Apply code"}</button>
           {promoState.message && <p className={promoState.valid ? "form-feedback form-feedback-success" : "form-feedback form-feedback-error"} role="status">{promoState.message}</p>}
           {promoState.valid && <p className="checkout-promo-savings">Your discount: Rs. {Number(promoState.discountPkr ?? 0).toLocaleString("en-PK")}</p>}
         </div>
-        <label className="checkout-notes-v15">Order notes <span>(optional)</span><textarea name="customerNotes" rows={3} maxLength={1000} placeholder="Anything the shop should know?" /></label>
+        <label className="checkout-notes-v15">Order notes <span>(optional)</span><textarea name="customerNotes" rows={3} maxLength={1000} placeholder="Anything the shop should know?" onChange={() => { if (!pending) rotateIdempotencyKey(); }} /></label>
       </section>
 
       <div className="checkout-secure-note-v15"><LockKeyhole size={17}/><span>Your product prices and available stock are rechecked on the server. No card details, wallet PINs, bank credentials or payment proof are collected on this form.</span></div>
