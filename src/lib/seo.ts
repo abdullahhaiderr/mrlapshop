@@ -1,7 +1,7 @@
 import { store } from "@/config/store";
 
 export function getSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "https://mrlapshop.vercel.app").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_SITE_URL || "https://mrlapshop.pk").replace(/\/+$/, "");
 }
 
 /** Safely serialize JSON-LD so user-controlled text cannot terminate its script element. */
