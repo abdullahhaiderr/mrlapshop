@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/admin", label: "Overview" },
@@ -11,9 +14,20 @@ const links = [
 ];
 
 export function AdminNav() {
+  const pathname = usePathname();
+
   return (
     <nav className="admin-nav" aria-label="Owner dashboard">
-      {links.map((link) => <Link href={link.href} key={link.href}>{link.label}</Link>)}
+      {links.map((link) => {
+        const isActive = link.href === "/admin"
+          ? pathname === "/admin"
+          : pathname === link.href || pathname.startsWith(`${link.href}/`);
+        return (
+          <Link href={link.href} key={link.href} prefetch aria-current={isActive ? "page" : undefined}>
+            {link.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
