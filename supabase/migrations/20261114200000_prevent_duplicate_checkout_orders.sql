@@ -68,17 +68,13 @@ begin
   where idempotency_key = p_idempotency_key
   for update;
   if found then
-    if v_existing_order.user_id is distinct from v_user_id
-       or lower(v_existing_order.email) is distinct from lower(trim(coalesce(p_email, '')))
-       or v_existing_order.idempotency_payload_hash is distinct from v_request_hash then
-      raise exception 'This checkout submission key was already used for a different request. Refresh checkout and submit again';
-    end if;
-
-    v_token := case when v_user_id is null
+    -- The UUID is a high-entropy, browser-held attempt credential. Returning the original
+    -- response for this key makes retries safe even if account/address defaults change on reload.
+    v_token := case when v_existing_order.user_id is null
       then encode(extensions.digest(convert_to(p_idempotency_key::text, 'UTF8'), 'sha256'), 'hex')
       else null end;
 
-    if v_user_id is null and v_existing_order.guest_tracking_token_hash is distinct from
+    if v_existing_order.user_id is null and v_existing_order.guest_tracking_token_hash is distinct from
       encode(extensions.digest(convert_to(v_token, 'UTF8'), 'sha256'), 'hex') then
       raise exception 'The saved guest order token could not be verified';
     end if;
