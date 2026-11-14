@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { requireStoreOwner } from "@/lib/supabase/owner";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -14,7 +15,7 @@ export default async function OwnerDashboardLayout({ children }: { children: Rea
       <div className="admin-wrap admin-shell">
         <aside className="admin-sidebar">
           <Link href="/admin" className="admin-brand" aria-label="Lapzone Admin overview">
-            <span>Lapzone <strong>Admin</strong></span>
+            <Image src="/images/mr-lapshop-logo.webp" alt="Mr LapShop" width={420} height={164} priority />
           </Link>
           <AdminNav />
           <div className="admin-sidebar-footer">
