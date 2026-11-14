@@ -66,7 +66,7 @@ export function Header() {
   }, [pathname]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
-  const shopCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shopCloseTimer = useRef<number | null>(null);
   const [search, setSearch] = useState("");
 
   function openShopMenu() {
