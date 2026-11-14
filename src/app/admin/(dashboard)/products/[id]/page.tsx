@@ -20,7 +20,10 @@ export default async function EditProductPage({ params, searchParams }: { params
   const imageRows = await Promise.all((images ?? []).map(async (item) => ({ ...item, url: supabase.storage.from("product-images").getPublicUrl(item.storage_path).data.publicUrl })));
   const emailConfigured = Boolean(process.env.RESEND_API_KEY?.trim() && process.env.RESEND_FROM_EMAIL?.trim());
   return <section className="admin-content"><div className="admin-page-heading"><div><span className="eyebrow">INVENTORY · EDIT RECORD</span><h1>Product <em>details.</em></h1><p>Changes here are saved to the live catalogue database.</p></div><Link href="/admin/products">← All products</Link></div>
-    {query.error && <p className="form-feedback form-feedback-error">The requested change did not complete. Check the file, product details and database connection.</p>}
+    {query.error === "duplicate_slug" && <p className="form-feedback form-feedback-error">That URL slug is already assigned to another product. Choose a different slug.</p>}
+    {query.error === "duplicate_sku" && <p className="form-feedback form-feedback-error">That SKU is already assigned to another product. Enter a unique SKU or leave it blank.</p>}
+    {query.error === "access_denied" && <p className="form-feedback form-feedback-error">Your owner permission was not accepted by the database. Sign out, sign back in and retry.</p>}
+    {query.error && !["duplicate_slug", "duplicate_sku", "access_denied"].includes(query.error) && <p className="form-feedback form-feedback-error">The requested change did not complete. Check the product details and database connection.</p>}
     {query.emailSent && <p className="form-feedback form-feedback-success">New-arrival email sent to {query.emailSent} verified customer{query.emailSent === "1" ? "" : "s"} who opted in.</p>}
     {query.emailError === "not_configured" && <p className="form-feedback form-feedback-error">Resend is not ready yet. Add RESEND_API_KEY and a verified RESEND_FROM_EMAIL in Vercel, then redeploy.</p>}
     {query.emailError === "no_subscribers" && <p className="form-feedback form-feedback-error">No verified customers have opted in to promotional emails yet. Customers can subscribe at registration or in Account → Email preferences.</p>}
