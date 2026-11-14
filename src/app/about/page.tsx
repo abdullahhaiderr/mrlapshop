@@ -6,6 +6,7 @@ import { store } from "@/config/store";
 export const metadata: Metadata = {
   title: "About Mr LapShop",
   description: "Get to know Mr LapShop for new, used and open-box laptops, accessories and repair services in Rawalpindi and Islamabad.",
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {
