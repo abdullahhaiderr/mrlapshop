@@ -68,6 +68,12 @@ begin
   where idempotency_key = p_idempotency_key
   for update;
   if found then
+    -- A checkout key is bound to one exact request. Reject accidental or malicious reuse
+    -- for different customer, delivery, payment, basket, or promotion details.
+    if v_existing_order.idempotency_payload_hash is distinct from v_request_hash then
+      raise exception 'This checkout attempt was already used for different order details';
+    end if;
+
     -- The UUID is a high-entropy, browser-held attempt credential. Returning the original
     -- response for this key makes retries safe even if account/address defaults change on reload.
     v_token := case when v_existing_order.user_id is null
