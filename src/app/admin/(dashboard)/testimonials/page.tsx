@@ -68,7 +68,7 @@ export default async function AdminTestimonialsPage({
             <label className="admin-field"><span>Publication status</span><select name="status" defaultValue="pending"><option value="pending">Pending review</option><option value="published">Publish now</option><option value="rejected">Do not publish</option></select></label>
           </div>
           <label className="admin-field"><span>Written review (optional, minimum 20 characters)</span><textarea name="reviewText" rows={3} maxLength={1200} placeholder="Add a short review or context for the video..." /></label>
-          <label className="admin-check-label"><input type="checkbox" name="consentToPublish" /> I have the customer's permission to publish this testimonial and video.</label>
+          <label className="admin-check-label"><input type="checkbox" name="consentToPublish" /> I have the customer&apos;s permission to publish this testimonial and video.</label>
           <p className="admin-testimonial-hint">A record is shown publicly only when its status is Published and customer permission is confirmed. Saving a URL does not upload a video; it embeds the YouTube video on the website.</p>
           <button className="button button-primary" type="submit">Save testimonial</button>
         </form>
