@@ -1,11 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireStoreOwner } from "@/lib/supabase/owner";
-import { canPublishProduct, getAllowedProductImageExtension } from "@/lib/admin/product-rules";
+import { canPublishProduct } from "@/lib/admin/product-rules";
 import { getYouTubeVideoId } from "@/lib/youtube";
 
 const nullableNumber = z.preprocess((value) => {
@@ -121,7 +120,13 @@ export async function saveProductAction(formData: FormData) {
 
   if (value.id) {
     const { error } = await supabase.from("products").update(record).eq("id", value.id);
-    if (error) redirect(`/admin/products/${value.id}?error=save`);
+    if (error) {
+      const code = error.code === "23505"
+        ? error.message.toLowerCase().includes("slug") ? "duplicate_slug" : "duplicate_sku"
+        : error.code === "42501" ? "access_denied" : "save";
+      console.error("[admin-product] Update failed.", { code: error.code });
+      redirect(`/admin/products/${value.id}?error=${code}`);
+    }
     await recordAudit(supabase, user.id, "product.updated", "product", value.id, { status: value.status, price_pkr: value.pricePkr, stock: value.stock });
     revalidatePath(`/admin/products/${value.id}`);
     revalidatePath("/admin/products");
@@ -129,7 +134,13 @@ export async function saveProductAction(formData: FormData) {
   }
 
   const { data, error } = await supabase.from("products").insert(record).select("id").single();
-  if (error || !data) redirect("/admin/products/new?error=save");
+  if (error || !data) {
+    const code = error?.code === "23505"
+      ? error.message.toLowerCase().includes("slug") ? "duplicate_slug" : "duplicate_sku"
+      : error?.code === "42501" ? "access_denied" : "save";
+    console.error("[admin-product] Insert failed.", { code: error?.code });
+    redirect(`/admin/products/new?error=${code}`);
+  }
   await recordAudit(supabase, user.id, "product.created", "product", data.id, { status: value.status });
   revalidatePath("/admin/products");
   redirect(`/admin/products/${data.id}?created=1`);
@@ -145,31 +156,6 @@ export async function archiveProductAction(formData: FormData) {
   await recordAudit(supabase, user.id, "product.archived", "product", id);
   revalidatePath("/admin/products");
   redirect("/admin/products?archived=1");
-}
-
-export async function uploadProductImageAction(formData: FormData) {
-  const { supabase, user } = await requireStoreOwner();
-  const productId = formText(formData, "productId");
-  const altText = formText(formData, "altText");
-  if (!z.uuid().safeParse(productId).success || altText.length < 4 || altText.length > 180) redirect(`/admin/products/${productId}?error=image_details`);
-  const image = formData.get("image");
-  if (!(image instanceof File) || image.size < 1 || image.size > 8 * 1024 * 1024) redirect(`/admin/products/${productId}?error=image_size`);
-  const bytes = new Uint8Array(await image.arrayBuffer());
-  const extension = getAllowedProductImageExtension(image.type, bytes);
-  if (!extension) redirect(`/admin/products/${productId}?error=image_type`);
-
-  const storagePath = `${productId}/${randomUUID()}.${extension}`;
-  const { error: uploadError } = await supabase.storage.from("product-images").upload(storagePath, bytes, { contentType: image.type, cacheControl: "3600", upsert: false });
-  if (uploadError) redirect(`/admin/products/${productId}?error=image_upload`);
-  const { count } = await supabase.from("product_images").select("id", { count: "exact", head: true }).eq("product_id", productId);
-  const { error: insertError } = await supabase.from("product_images").insert({ product_id: productId, storage_path: storagePath, alt_text: altText, position: count ?? 0 });
-  if (insertError) {
-    await supabase.storage.from("product-images").remove([storagePath]);
-    redirect(`/admin/products/${productId}?error=image_record`);
-  }
-  await recordAudit(supabase, user.id, "product.image_uploaded", "product", productId, { storage_path: storagePath, mime_type: image.type, size: image.size });
-  revalidatePath(`/admin/products/${productId}`);
-  redirect(`/admin/products/${productId}?imageUploaded=1`);
 }
 
 export async function removeProductImageAction(formData: FormData) {
@@ -366,7 +352,11 @@ export async function saveTestimonialAction(formData: FormData) {
       published_at: value.status === "published" ? (existing.published_at ?? new Date().toISOString()) : null,
     };
     const { error } = await supabase.from("customer_testimonials").update(row).eq("id", value.id);
-    if (error) redirect("/admin/testimonials?error=save");
+    if (error) {
+      const code = error.code === "23505" ? "duplicate_video" : error.code === "42501" ? "access_denied" : "save";
+      console.error("[admin-testimonial] Update failed.", { code: error.code });
+      redirect(`/admin/testimonials?error=${code}`);
+    }
     await recordAudit(supabase, user.id, "testimonial.updated", "customer_testimonial", value.id, {
       status: value.status,
       youtube_video_id: value.youtubeUrl ? getYouTubeVideoId(value.youtubeUrl) : null,
@@ -384,7 +374,11 @@ export async function saveTestimonialAction(formData: FormData) {
       published_at: value.status === "published" ? new Date().toISOString() : null,
     };
     const { data, error } = await supabase.from("customer_testimonials").insert(row).select("id").single();
-    if (error || !data) redirect("/admin/testimonials?error=save");
+    if (error || !data) {
+      const code = error?.code === "23505" ? "duplicate_video" : error?.code === "42501" ? "access_denied" : "save";
+      console.error("[admin-testimonial] Insert failed.", { code: error?.code });
+      redirect(`/admin/testimonials?error=${code}`);
+    }
     await recordAudit(supabase, user.id, "testimonial.created", "customer_testimonial", data.id, {
       status: value.status,
       youtube_video_id: value.youtubeUrl ? getYouTubeVideoId(value.youtubeUrl) : null,
