@@ -5,6 +5,8 @@ import { CheckCircle2, Package, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
+export const metadata = { title: "Order tracking | Mr LapShop", robots: { index: false, follow: false } };
+
 type OrderView = {
   order_number: string;
   status: string;
