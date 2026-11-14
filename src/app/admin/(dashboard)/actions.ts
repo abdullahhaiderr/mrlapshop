@@ -120,17 +120,28 @@ export async function saveProductAction(formData: FormData) {
   };
 
   if (value.id) {
-    const { error } = await supabase.from("products").update(record).eq("id", value.id);
-    if (error) {
-      const code = error.code === "23505"
+    const { data: updatedProduct, error } = await supabase.from("products")
+      .update(record)
+      .eq("id", value.id)
+      .select("id, status, slug")
+      .maybeSingle();
+    if (error || !updatedProduct) {
+      const code = error?.code === "23505"
         ? error.message.toLowerCase().includes("slug") ? "duplicate_slug" : "duplicate_sku"
-        : error.code === "42501" ? "access_denied" : "save";
-      console.error("[admin-product] Update failed.", { code: error.code });
+        : error?.code === "42501" ? "access_denied" : "save";
+      console.error("[admin-product] Update failed or matched no row.", { code: error?.code });
       redirect(`/admin/products/${value.id}?error=${code}`);
     }
-    await recordAudit(supabase, user.id, "product.updated", "product", value.id, { status: value.status, price_pkr: value.pricePkr, stock: value.stock });
+    await recordAudit(supabase, user.id, "product.updated", "product", value.id, {
+      status: value.status,
+      price_pkr: value.pricePkr,
+      stock: value.stock,
+    });
     revalidatePath(`/admin/products/${value.id}`);
     revalidatePath("/admin/products");
+    revalidatePath("/shop");
+    revalidatePath("/");
+    revalidatePath(`/product/${updatedProduct.slug}`);
     redirect(`/admin/products/${value.id}?saved=1`);
   }
 
