@@ -4,6 +4,7 @@ import "./globals.css";
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { WhatsAppFloat } from "@/components/layout/whatsapp-float";
 import { store } from "@/config/store";
 import { StorefrontProvider } from "@/components/providers/storefront-provider";
 
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Header />
           <div id="main-content">{children}</div>
           <Footer />
+          <WhatsAppFloat />
         </StorefrontProvider>
       </body>
     </html>
