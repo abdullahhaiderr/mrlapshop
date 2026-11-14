@@ -1994,3 +1994,17 @@ body:has(.admin-page) .whatsapp-float { display: none; }
 .admin-recent-testimonials a { color: #766a16; font-size: 9px; font-weight: 800; }
 @media (max-width: 1020px) { .admin-dashboard-columns { grid-template-columns: 1fr; } .admin-dashboard-side { grid-template-columns: repeat(2, minmax(0,1fr)); } .admin-dashboard-side > .admin-panel:last-child { grid-column: 1 / -1; } }
 @media (max-width: 600px) { .admin-dashboard-side { grid-template-columns: 1fr; } .admin-dashboard-side > .admin-panel:last-child { grid-column: auto; } .admin-sales-chart { gap: 8px; } .admin-chart-footnote { align-items: flex-start; flex-direction: column; } }
+
+
+/* Multi-photo uploader (files go directly to Supabase Storage, never through a Server Action body). */
+.admin-image-uploader { display: grid; gap: 13px; }
+.admin-image-uploader > .button { justify-self: start; }
+.admin-pending-images { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.admin-pending-image { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid #e8ebf0; border-radius: 10px; background: #fafbfc; }
+.admin-pending-image > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.admin-pending-image > div strong { min-width: 0; overflow: hidden; color: #354256; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-pending-image > div small { color: #8a95a4; font-size: 9px; }
+.admin-image-uploader .admin-field small { color: #8994a4; font-weight: 500; }
+.admin-announcement-form { display: grid; justify-items: start; gap: 12px; }
+.admin-announcement-form p { max-width: 650px; margin: 0; color: #687487; font-size: 10px; line-height: 1.7; }
+@media (max-width: 620px) { .admin-pending-images { grid-template-columns: 1fr; } }
