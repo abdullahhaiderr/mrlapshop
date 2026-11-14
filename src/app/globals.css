@@ -2008,3 +2008,18 @@ body:has(.admin-page) .whatsapp-float { display: none; }
 .admin-announcement-form { display: grid; justify-items: start; gap: 12px; }
 .admin-announcement-form p { max-width: 650px; margin: 0; color: #687487; font-size: 10px; line-height: 1.7; }
 @media (max-width: 620px) { .admin-pending-images { grid-template-columns: 1fr; } }
+
+
+.admin-category-bars { display: grid; gap: 16px; }
+.admin-category-bar-row { display: grid; gap: 7px; }
+.admin-category-bar-row > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.admin-category-bar-row strong { color: #435066; font-size: 10px; }
+.admin-category-bar-row > div:first-child span { color: #909baa; font-size: 9px; }
+.admin-category-bar-track { height: 7px; overflow: hidden; border-radius: 99px; background: #f0f2f5; }
+.admin-category-bar-track span { display: block; height: 100%; border-radius: inherit; background: #bfe943; }
+.admin-recent-testimonials article { display: grid; gap: 8px; }
+.admin-recent-video { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 9px; background: #e9edf1; }
+.admin-recent-video img { object-fit: cover; transition: transform .25s ease; }
+.admin-recent-video:hover img { transform: scale(1.035); }
+.admin-recent-video > span { position: absolute; top: 50%; left: 50%; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: rgba(199,244,66,.95); color: #17200e; font-size: 13px; transform: translate(-50%,-50%); }
+.admin-recent-video-empty { display: grid; place-items: center; color: #8792a1; font-size: 10px; }
