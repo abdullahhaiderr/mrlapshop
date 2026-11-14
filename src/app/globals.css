@@ -2457,3 +2457,35 @@ body:has(.admin-page) .whatsapp-float { display: none; }
   .admin-sidebar .admin-brand { min-height: 43px; padding: 0 3px 5px; }
   .admin-sidebar .admin-brand img { width: 156px; max-height: 52px; }
 }
+
+
+/* Owner dashboard: settings, promotions and destructive actions */
+.admin-settings-form { display: grid; gap: 20px; }
+.admin-settings-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.admin-settings-toggle { display: flex; align-items: flex-start; gap: 12px; padding: 15px 16px; border: 1px solid #e7eaf0; border-radius: 12px; background: #fff; cursor: pointer; }
+.admin-settings-toggle input { width: 17px; height: 17px; margin: 3px 0 0; accent-color: #a3c934; flex: 0 0 auto; }
+.admin-settings-toggle span { display: grid; gap: 4px; }
+.admin-settings-toggle strong { color: #17202e; font-size: 13px; }
+.admin-settings-toggle small { color: #7b8492; font-size: 12px; line-height: 1.5; }
+.admin-settings-fee { max-width: 440px; margin-top: 20px; }
+.admin-settings-submit { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.admin-settings-submit p { color: #7b8492; font-size: 12px; margin: 0; }
+.admin-promo-form { display: grid; gap: 16px; }
+.admin-promo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.admin-promo-create .admin-panel-head { margin-bottom: 18px; }
+.admin-promo-form > .button { justify-self: start; }
+.admin-promo-create .admin-settings-toggle { max-width: 520px; }
+.admin-promo-create input, .admin-promo-create select { min-height: 44px; }
+.admin-delete-product-panel { border-color: #f2d7d7; }
+.admin-delete-product-panel .admin-panel-head p { color: #8f5a5a; }
+.button-danger { border: 1px solid #b42318; border-radius: 9px; background: #b42318; color: white; padding: 11px 16px; font-weight: 700; cursor: pointer; }
+.admin-danger-link { color: #b42318; }
+.checkout-promo-box { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: end; padding: 16px; border: 1px solid #e6e9ef; border-radius: 12px; background: #fafbfc; }
+.checkout-promo-box > .button { min-height: 44px; }
+.checkout-promo-box .form-feedback, .checkout-promo-savings { grid-column: 1 / -1; margin: 0; }
+.checkout-promo-savings { color: #3f6a1e; font-weight: 700; font-size: 13px; }
+@media (max-width: 760px) {
+  .admin-settings-options, .admin-promo-grid { grid-template-columns: 1fr; }
+  .checkout-promo-box { grid-template-columns: 1fr; }
+  .checkout-promo-box > .button { justify-self: start; }
+}
