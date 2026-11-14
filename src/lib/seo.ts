@@ -100,3 +100,30 @@ export function getStoreStructuredData() {
     ],
   };
 }
+
+
+/** Per-page social metadata keeps Open Graph and X previews aligned with each canonical URL. */
+export function getPageSocialMetadata(title: string, description: string, path: string) {
+  return {
+    openGraph: {
+      type: "website" as const,
+      url: `${getSiteUrl()}${path}`,
+      title,
+      description,
+      siteName: store.name,
+      locale: "en_PK",
+      images: [{
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Mr LapShop — laptops, accessories and repairs in Rawalpindi",
+      }],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title,
+      description,
+      images: ["/opengraph-image"],
+    },
+  };
+}
