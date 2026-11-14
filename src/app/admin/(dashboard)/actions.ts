@@ -315,6 +315,7 @@ const testimonialSchema = z.object({
 
 export async function saveTestimonialAction(formData: FormData) {
   const { supabase, user } = await requireStoreOwner();
+  const returnToDashboard = formText(formData, "returnTo") === "dashboard";
   const parsed = testimonialSchema.safeParse({
     id: formText(formData, "id") || null,
     displayName: formText(formData, "displayName"),
@@ -326,10 +327,10 @@ export async function saveTestimonialAction(formData: FormData) {
     status: formText(formData, "status"),
   });
 
-  if (!parsed.success) redirect("/admin/testimonials?error=validation");
+  if (!parsed.success) redirect(returnToDashboard ? "/admin?testimonialError=validation" : "/admin/testimonials?error=validation");
   const value = parsed.data;
   if (value.status === "published" && !value.consentToPublish) {
-    redirect("/admin/testimonials?error=consent_required");
+    redirect(returnToDashboard ? "/admin?testimonialError=consent_required" : "/admin/testimonials?error=consent_required");
   }
 
   if (value.id) {
@@ -388,7 +389,7 @@ export async function saveTestimonialAction(formData: FormData) {
 
   revalidatePath("/admin/testimonials");
   revalidatePath("/");
-  redirect("/admin/testimonials?saved=1");
+  redirect(returnToDashboard ? "/admin?testimonialAdded=1" : "/admin/testimonials?saved=1");
 }
 
 
@@ -621,4 +622,73 @@ export async function createProductWithResultAction(formData: FormData): Promise
   revalidatePath("/admin/products");
   revalidatePath("/admin");
   return { ok: true, productId: data.id };
+}
+
+
+export async function setTestimonialStatusAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const id = formText(formData, "id");
+  const status = formText(formData, "status");
+  if (!z.uuid().safeParse(id).success || !["published", "rejected"].includes(status)) {
+    redirect("/admin?testimonialError=validation");
+  }
+
+  const { data: current, error: readError } = await supabase.from("customer_testimonials")
+    .select("consent_to_publish, published_at, headline")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError || !current) redirect("/admin?testimonialError=save");
+  if (status === "published" && !current.consent_to_publish) {
+    redirect("/admin?testimonialError=consent_required");
+  }
+
+  const { error } = await supabase.from("customer_testimonials").update({
+    status,
+    published_at: status === "published" ? (current.published_at ?? new Date().toISOString()) : null,
+  }).eq("id", id);
+  if (error) {
+    console.error("[admin-testimonial] Quick status update failed.", { code: error.code });
+    redirect("/admin?testimonialError=save");
+  }
+
+  await recordAudit(supabase, user.id, status === "published" ? "testimonial.published" : "testimonial.hidden", "customer_testimonial", id, {
+    status,
+    source: "dashboard",
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/testimonials");
+  revalidatePath("/");
+  redirect("/admin?testimonialUpdated=1");
+}
+
+export async function setProductVisibilityAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const id = formText(formData, "id");
+  const status = formText(formData, "status");
+  if (!z.uuid().safeParse(id).success || !["active", "draft"].includes(status)) {
+    redirect("/admin?productError=validation");
+  }
+
+  const { data: product, error: readError } = await supabase.from("products")
+    .select("id, title, price_pkr, warranty_months, status, stock")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError || !product) redirect("/admin?productError=save");
+  if (status === "active" && !canPublishProduct(product.price_pkr, product.warranty_months)) {
+    redirect("/admin?productError=publish_requirements");
+  }
+
+  const { error } = await supabase.from("products").update({ status }).eq("id", id);
+  if (error) {
+    console.error("[admin-product] Quick visibility update failed.", { code: error.code });
+    redirect("/admin?productError=save");
+  }
+  await recordAudit(supabase, user.id, status === "active" ? "product.published" : "product.hidden", "product", id, {
+    status,
+    source: "dashboard",
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath("/shop");
+  redirect("/admin?productUpdated=1");
 }
