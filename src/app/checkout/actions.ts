@@ -57,7 +57,6 @@ async function notifyShopOfOrderRequest(payload: {
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
