@@ -346,18 +346,25 @@ export async function saveTestimonialAction(formData: FormData) {
     redirect("/admin/testimonials?error=consent_required");
   }
 
-  const row = {
-    display_name: value.displayName,
-    headline: value.headline,
-    review_text: value.reviewText,
-    rating: value.rating,
-    youtube_url: value.youtubeUrl,
-    consent_to_publish: value.consentToPublish,
-    status: value.status,
-    published_at: value.status === "published" ? new Date().toISOString() : null,
-  };
-
   if (value.id) {
+    const { data: existing, error: readError } = await supabase
+      .from("customer_testimonials")
+      .select("published_at")
+      .eq("id", value.id)
+      .single();
+    if (readError || !existing) redirect("/admin/testimonials?error=missing");
+
+    const row = {
+      display_name: value.displayName,
+      headline: value.headline,
+      review_text: value.reviewText,
+      rating: value.rating,
+      youtube_url: value.youtubeUrl,
+      consent_to_publish: value.consentToPublish,
+      status: value.status,
+      // Keep the original publication date when an already-published testimonial is edited.
+      published_at: value.status === "published" ? (existing.published_at ?? new Date().toISOString()) : null,
+    };
     const { error } = await supabase.from("customer_testimonials").update(row).eq("id", value.id);
     if (error) redirect("/admin/testimonials?error=save");
     await recordAudit(supabase, user.id, "testimonial.updated", "customer_testimonial", value.id, {
@@ -366,6 +373,16 @@ export async function saveTestimonialAction(formData: FormData) {
       consent_to_publish: value.consentToPublish,
     });
   } else {
+    const row = {
+      display_name: value.displayName,
+      headline: value.headline,
+      review_text: value.reviewText,
+      rating: value.rating,
+      youtube_url: value.youtubeUrl,
+      consent_to_publish: value.consentToPublish,
+      status: value.status,
+      published_at: value.status === "published" ? new Date().toISOString() : null,
+    };
     const { data, error } = await supabase.from("customer_testimonials").insert(row).select("id").single();
     if (error || !data) redirect("/admin/testimonials?error=save");
     await recordAudit(supabase, user.id, "testimonial.created", "customer_testimonial", data.id, {
