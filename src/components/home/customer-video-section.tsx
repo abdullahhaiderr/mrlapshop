@@ -100,7 +100,7 @@ export function CustomerVideoSection({ videos }: { videos: PublicVideoTestimonia
           <div>
             <span className="eyebrow">REAL CUSTOMER STORIES</span>
             <h2>Hear it from <em>our customers.</em></h2>
-            <p>Watch genuine customer videos shared with Mr LapShop's permission.</p>
+            <p>Watch genuine customer videos shared with Mr LapShop&apos;s permission.</p>
           </div>
           <Link className="button button-dark customer-channel-link" href={store.socialLinks.find((item) => item.label === "YouTube")?.href ?? "https://www.youtube.com/"} target="_blank" rel="noopener noreferrer">
             <PlayCircle size={17} /> Visit our YouTube channel
