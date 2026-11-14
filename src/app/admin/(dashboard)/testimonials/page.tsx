@@ -35,12 +35,16 @@ export default async function AdminTestimonialsPage({
   const testimonials = (data ?? []) as Testimonial[];
 
   const errorMessage = params.error === "consent_required"
-    ? "Customer permission must be confirmed before a video can be published."
+    ? "Customer permission must be confirmed before a testimonial can be published."
     : params.error === "validation"
-      ? "Check the title, customer name, review text and YouTube URL. Review text must contain at least 20 characters."
-      : params.error
-        ? "The testimonial could not be saved. Check the details and try again."
-        : null;
+      ? "Enter a customer name and headline, then add either a valid YouTube video URL or a written review of at least 20 characters."
+      : params.error === "duplicate_video"
+        ? "That YouTube video is already attached to another testimonial. Use a different video URL or edit the existing testimonial."
+        : params.error === "access_denied"
+          ? "Your owner permission was not accepted by the database. Sign out, sign back in and retry."
+          : params.error
+            ? "The testimonial could not be saved. Refresh the page and try again."
+            : null;
 
   return (
     <section className="admin-content">
@@ -58,7 +62,7 @@ export default async function AdminTestimonialsPage({
       </div>
 
       <section className="admin-panel">
-        <div className="admin-panel-head"><div><h2>Add a customer story</h2><p>Paste an individual YouTube watch, Shorts or youtu.be link.</p></div></div>
+        <div className="admin-panel-head"><div><h2>Add a customer story</h2><p>Paste a YouTube watch, Shorts or youtu.be link, or enter a written review.</p></div></div>
         <form action={saveTestimonialAction} className="admin-form admin-testimonial-form">
           <div className="admin-form-grid">
             <label className="admin-field"><span>Customer display name *</span><input name="displayName" required minLength={2} maxLength={80} placeholder="e.g. Verified Mr LapShop customer" /></label>
@@ -69,7 +73,7 @@ export default async function AdminTestimonialsPage({
           </div>
           <label className="admin-field"><span>Written review (optional, minimum 20 characters)</span><textarea name="reviewText" rows={3} maxLength={1200} placeholder="Add a short review or context for the video..." /></label>
           <label className="admin-check-label"><input type="checkbox" name="consentToPublish" /> I have the customer&apos;s permission to publish this testimonial and video.</label>
-          <p className="admin-testimonial-hint">A record is shown publicly only when its status is Published and customer permission is confirmed. Saving a URL does not upload a video; it embeds the YouTube video on the website.</p>
+          <p className="admin-testimonial-hint">At least one piece of content is required: a valid YouTube link or a written review of at least 20 characters. A testimonial is shown publicly only when its status is Published and customer permission is confirmed. A YouTube link is embedded; the video file itself is not uploaded.</p>
           <button className="button button-primary" type="submit">Save testimonial</button>
         </form>
       </section>
