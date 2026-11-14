@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { CheckoutForm, type CheckoutSettings } from "@/components/cart/checkout-form";
 
-export const metadata = { title: "Checkout | Mr LapShop" };
+export const metadata = { title: "Checkout | Mr LapShop", robots: { index: false, follow: false } };
 
 export default async function CheckoutPage() {
   let settings: CheckoutSettings | null = null;
