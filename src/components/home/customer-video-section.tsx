@@ -134,7 +134,7 @@ export function CustomerVideoSection({ videos }: { videos: PublicVideoTestimonia
               </div>
               <button className="customer-video-modal-close" type="button" ref={closeButtonRef} onClick={closeVideo} aria-label="Close video"><X size={21} /></button>
             </div>
-            <div className="customer-video-modal-player">
+            <div className={`customer-video-modal-player ${activeVideo.youtubeUrl.includes("/shorts/") ? "is-portrait" : ""}`}>
               <iframe
                 key={activeVideo.id}
                 src={`https://www.youtube-nocookie.com/embed/${activeVideo.videoId}?autoplay=1&rel=0&modestbranding=1`}
