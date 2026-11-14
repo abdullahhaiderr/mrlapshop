@@ -80,6 +80,17 @@ export function ProductEditorForm({ product, categories }: { product?: Product |
     if (!isNewProduct || creating || uploading || createdProductId) return;
     setFormError("");
     setPhotoError("");
+    const invalidPhoto = pendingImages.find((item) =>
+      !["image/jpeg", "image/png", "image/webp"].includes(item.file.type)
+      || item.file.size < 1
+      || item.file.size > 8 * 1024 * 1024
+      || item.altText.trim().length < 4
+      || item.altText.trim().length > 180
+    );
+    if (invalidPhoto) {
+      setPhotoError(`Check ${invalidPhoto.file.name}: use JPEG, PNG or WebP under 8 MB and add a description of 4–180 characters.`);
+      return;
+    }
     const formData = new FormData(event.currentTarget);
     setCreating(true);
     const result = await createProductWithResultAction(formData);
@@ -130,7 +141,7 @@ export function ProductEditorForm({ product, categories }: { product?: Product |
           <div><h2>Product photos</h2><p className="admin-photo-intro">Add multiple product images now. The first photo becomes the main listing image; the second photo appears when shoppers hover over the product.</p></div>
           <label className="admin-field">
             <span>Choose product images</span>
-            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={Boolean(createdProductId) || creating || uploading} onChange={(event) => selectProductPhotos(event.currentTarget.files)} />
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={creating || uploading} onChange={(event) => selectProductPhotos(event.currentTarget.files)} />
             <small>JPEG, PNG or WebP · 8 MB maximum per image · Up to 12 images at a time</small>
           </label>
           {pendingImages.length > 0 && (
