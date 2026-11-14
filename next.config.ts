@@ -17,9 +17,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "upload.wikimedia.org", pathname: "/wikipedia/commons/**" },
     ],
   },
-  experimental: {
-    serverActions: { bodySizeLimit: "9mb" },
-  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
