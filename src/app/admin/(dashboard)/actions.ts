@@ -396,3 +396,154 @@ export async function saveTestimonialAction(formData: FormData) {
   revalidatePath("/");
   redirect("/admin/testimonials?saved=1");
 }
+
+
+function escapeEmailHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
+}
+
+/**
+ * Sends a one-time product announcement to verified customer accounts that explicitly opted in.
+ * Each product can be announced once; Resend batch idempotency protects a retry after a partial send.
+ */
+export async function sendProductAnnouncementAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const productId = formText(formData, "productId");
+  if (!z.uuid().safeParse(productId).success) redirect("/admin/products?error=invalid_id");
+
+  const productPath = `/admin/products/${productId}`;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.RESEND_FROM_EMAIL?.trim();
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://mrlapshop.pk").replace(/\/+$/, "");
+
+  if (!apiKey || !from) redirect(`${productPath}?emailError=not_configured`);
+
+  const [{ data: product, error: productError }, { data: alreadySent, error: auditReadError }] = await Promise.all([
+    supabase.from("products")
+      .select("id, slug, title, brand, short_description, description, price_pkr, stock, status, product_images(storage_path, alt_text, position)")
+      .eq("id", productId)
+      .maybeSingle(),
+    supabase.from("admin_audit_log")
+      .select("id")
+      .eq("action", "product.new_arrival_email_sent")
+      .eq("entity_type", "product")
+      .eq("entity_id", productId)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (productError || !product) {
+    console.error("[product-announcement] Could not load product.", { code: productError?.code });
+    redirect(`${productPath}?emailError=product`);
+  }
+  if (auditReadError) {
+    console.error("[product-announcement] Could not check previous send.", { code: auditReadError.code });
+    redirect(`${productPath}?emailError=check`);
+  }
+  if (alreadySent) redirect(`${productPath}?emailError=already_sent`);
+
+  const productRow = product as unknown as {
+    id: string; slug: string; title: string; brand: string; short_description: string | null;
+    description: string | null; price_pkr: number | null; stock: number; status: string;
+    product_images: Array<{ storage_path: string; alt_text: string; position: number }> | null;
+  };
+  if (productRow.status !== "active" || productRow.stock < 1 || !productRow.price_pkr || productRow.price_pkr < 1) {
+    redirect(`${productPath}?emailError=not_ready`);
+  }
+
+  const { data: customers, count, error: customersError } = await supabase.from("profiles")
+    .select("email, full_name", { count: "exact" })
+    .eq("email_verified", true)
+    .eq("marketing_opt_in", true)
+    .order("created_at", { ascending: true })
+    .limit(1000);
+
+  if (customersError) {
+    console.error("[product-announcement] Could not load opted-in customers.", { code: customersError.code });
+    redirect(`${productPath}?emailError=recipients`);
+  }
+  if (!customers?.length) redirect(`${productPath}?emailError=no_subscribers`);
+  if ((count ?? customers.length) > customers.length) redirect(`${productPath}?emailError=too_many`);
+
+  const uniqueCustomers = Array.from(new Map(
+    customers
+      .filter((customer) => customer.email && customer.email.includes("@"))
+      .map((customer) => [customer.email.toLowerCase(), { email: customer.email.toLowerCase(), name: customer.full_name || "there" }]),
+  ).values());
+  if (!uniqueCustomers.length) redirect(`${productPath}?emailError=no_subscribers`);
+
+  const productImages = [...(productRow.product_images ?? [])].sort((a, b) => a.position - b.position);
+  const imageUrl = productImages[0]
+    ? supabase.storage.from("product-images").getPublicUrl(productImages[0].storage_path).data.publicUrl
+    : null;
+  const productUrl = `${siteUrl}/product/${productRow.slug}`;
+  const title = escapeEmailHtml(productRow.title);
+  const brand = escapeEmailHtml(productRow.brand);
+  const description = escapeEmailHtml((productRow.short_description || productRow.description || "A new addition to the Mr LapShop catalogue.").slice(0, 600));
+  const price = Number(productRow.price_pkr).toLocaleString("en-PK");
+  const escapedProductUrl = escapeEmailHtml(productUrl);
+  const imageMarkup = imageUrl
+    ? `<img src="${escapeEmailHtml(imageUrl)}" alt="${escapeEmailHtml(productImages[0].alt_text)}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border-radius:14px;margin:0 auto 22px;" />`
+    : "";
+  const baseHtml = `<!doctype html><html lang="en"><body style="margin:0;padding:28px 12px;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#182131;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e7eaf0;border-radius:16px;"><tr><td style="padding:28px;"><div style="font-size:12px;font-weight:800;letter-spacing:2px;color:#677286;">MR LAPSHOP</div><h1 style="margin:14px 0 8px;font-size:28px;line-height:1.2;">A new arrival is here.</h1><p style="margin:0 0 22px;color:#687487;font-size:14px;line-height:1.6;">A fresh addition to the Mr LapShop catalogue.</p>${imageMarkup}<div style="font-size:12px;font-weight:800;letter-spacing:1px;color:#798395;">${brand}</div><h2 style="margin:7px 0 10px;font-size:22px;line-height:1.3;">${title}</h2><p style="margin:0 0 15px;color:#687487;font-size:14px;line-height:1.7;">${description}</p><p style="margin:0 0 22px;color:#182131;font-size:18px;font-weight:800;">PKR ${price}</p><a href="${escapedProductUrl}" style="display:inline-block;padding:13px 20px;border-radius:9px;background:#c7f442;color:#17200e;text-decoration:none;font-size:13px;font-weight:800;">View product</a><hr style="margin:28px 0 16px;border:0;border-top:1px solid #edf0f3;" /><p style="margin:0;color:#8b95a4;font-size:11px;line-height:1.7;">You are receiving this because you chose to receive optional new-arrival and promotional emails from Mr LapShop. To change your preference, sign in to your <a href="${escapeEmailHtml(siteUrl)}/account" style="color:#59677a;">customer account</a>.</p><p style="margin:12px 0 0;color:#8b95a4;font-size:11px;">Mr LapShop · Rawalpindi, Pakistan</p></td></tr></table></body></html>`;
+  const plainText = [
+    "A new arrival is here at Mr LapShop.",
+    `${productRow.brand} · ${productRow.title}`,
+    `Price: PKR ${price}`,
+    productRow.short_description || productRow.description || "",
+    `View product: ${productUrl}`,
+    "",
+    "You are receiving this because you opted in to optional promotional emails. Sign in to your Mr LapShop account to change your email preference.",
+    `${siteUrl}/account`,
+  ].filter(Boolean).join("\n");
+
+  const batches = [];
+  for (let index = 0; index < uniqueCustomers.length; index += 100) {
+    batches.push(uniqueCustomers.slice(index, index + 100));
+  }
+
+  let sent = 0;
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    const emails = batches[batchIndex].map((customer) => ({
+      from,
+      to: [customer.email],
+      subject: `New arrival: ${productRow.title} | Mr LapShop`,
+      html: baseHtml.replace("A new arrival is here.", `A new arrival is here, ${escapeEmailHtml(customer.name)}.`),
+      text: plainText,
+    }));
+    try {
+      const response = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": `mrlapshop-product-launch-${productId}-${batchIndex + 1}`,
+        },
+        body: JSON.stringify(emails),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        console.error("[product-announcement] Resend rejected a batch.", { status: response.status, batch: batchIndex + 1 });
+        redirect(`${productPath}?emailError=partial`);
+      }
+      sent += batches[batchIndex].length;
+    } catch (error) {
+      if (error && typeof error === "object" && "digest" in error) throw error;
+      console.error("[product-announcement] Resend request failed.", { batch: batchIndex + 1 });
+      redirect(`${productPath}?emailError=partial`);
+    }
+  }
+
+  await recordAudit(supabase, user.id, "product.new_arrival_email_sent", "product", productId, {
+    recipient_count: sent,
+    batch_count: batches.length,
+  });
+  revalidatePath(productPath);
+  redirect(`${productPath}?emailSent=${sent}`);
+}
