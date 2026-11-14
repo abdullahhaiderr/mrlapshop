@@ -2,11 +2,17 @@ import type { Metadata } from "next";
 import { ShopCatalog } from "@/components/shop/shop-catalog";
 import { getPublicCatalogue, getPublicCategories } from "@/lib/catalogue";
 import { catalogueCategories } from "@/config/store";
+import { getPageSocialMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Shop laptops and accessories",
-  description: "Browse currently published laptops and accessories from Mr LapShop in Rawalpindi. Filter by brand, condition, budget, processor, memory and availability.",
+  description: "Browse new, used and open-box laptops and accessories from Mr LapShop in Rawalpindi. Filter by brand, condition, budget, processor, memory and availability.",
   alternates: { canonical: "/shop" },
+  ...getPageSocialMetadata(
+    "Shop laptops and accessories at Mr LapShop, Rawalpindi",
+    "Explore new, used and open-box laptops, accessories and current listings from Mr LapShop in Rawalpindi.",
+    "/shop",
+  ),
 };
 
 export const dynamic = "force-dynamic";
