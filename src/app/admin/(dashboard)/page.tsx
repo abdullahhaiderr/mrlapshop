@@ -3,47 +3,206 @@ import { requireStoreOwner } from "@/lib/supabase/owner";
 
 export const metadata = { title: "Owner dashboard | Mr LapShop" };
 
+function formatPKR(value: number) {
+  return `Rs. ${Math.round(value).toLocaleString("en-PK")}`;
+}
+
 export default async function AdminPage() {
   const { supabase } = await requireStoreOwner();
-  const [products, activeProducts, categories, orders, newOrders, customers, testimonials, pendingTestimonials, recentResult] = await Promise.all([
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  const [
+    productsCount,
+    activeProducts,
+    lowStock,
+    ordersCount,
+    newOrders,
+    customers,
+    publishedTestimonials,
+    pendingTestimonials,
+    recentOrders,
+    recentProducts,
+    paidOrdersThirtyDays,
+    paidOrdersSixMonths,
+    latestTestimonials,
+  ] = await Promise.all([
     supabase.from("products").select("id", { count: "exact", head: true }),
     supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
-    supabase.from("categories").select("id", { count: "exact", head: true }),
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active").lte("stock", 3),
     supabase.from("orders").select("id", { count: "exact", head: true }),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "new"),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     supabase.from("customer_testimonials").select("id", { count: "exact", head: true }).eq("status", "published"),
     supabase.from("customer_testimonials").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("orders").select("id, order_number, customer_name, status, total_pkr, created_at").order("created_at", { ascending: false }).limit(6),
+    supabase.from("orders").select("id, order_number, customer_name, status, payment_status, total_pkr, created_at").order("created_at", { ascending: false }).limit(6),
+    supabase.from("products").select("id, title, brand, price_pkr, stock, status").order("created_at", { ascending: false }).limit(6),
+    supabase.from("orders").select("total_pkr").eq("payment_status", "paid").gte("created_at", thirtyDaysAgo.toISOString()).limit(1000),
+    supabase.from("orders").select("total_pkr, created_at").eq("payment_status", "paid").gte("created_at", sixMonthsAgo.toISOString()).limit(1000),
+    supabase.from("customer_testimonials").select("id, display_name, headline, youtube_url, status, created_at").order("created_at", { ascending: false }).limit(3),
   ]);
 
+  const revenueThirtyDays = (paidOrdersThirtyDays.data ?? []).reduce((sum, order) => sum + Number(order.total_pkr || 0), 0);
+  const monthBuckets = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(sixMonthsAgo.getFullYear(), sixMonthsAgo.getMonth() + index, 1);
+    return {
+      key: `${date.getFullYear()}-${date.getMonth()}`,
+      label: date.toLocaleDateString("en-PK", { month: "short" }),
+      total: 0,
+    };
+  });
+  for (const order of paidOrdersSixMonths.data ?? []) {
+    const date = new Date(order.created_at);
+    const bucket = monthBuckets.find((item) => item.key === `${date.getFullYear()}-${date.getMonth()}`);
+    if (bucket) bucket.total += Number(order.total_pkr || 0);
+  }
+  const maxMonthlyRevenue = Math.max(1, ...monthBuckets.map((item) => item.total));
+
   const stats = [
-    { label: "All products", value: products.count ?? "—" },
-    { label: "Published products", value: activeProducts.count ?? "—" },
-    { label: "Categories", value: categories.count ?? "—" },
-    { label: "Total orders", value: orders.count ?? "—" },
-    { label: "New orders", value: newOrders.count ?? "—" },
-    { label: "Customer accounts", value: customers.count ?? "—" },
-    { label: "Published testimonials", value: testimonials.count ?? "—" },
-    { label: "Pending testimonials", value: pendingTestimonials.count ?? "—" },
+    { label: "Paid revenue · 30 days", value: formatPKR(revenueThirtyDays), note: "Verified paid orders only" },
+    { label: "Total orders", value: ordersCount.count ?? "—", note: `${newOrders.count ?? 0} awaiting review` },
+    { label: "Live products", value: activeProducts.count ?? "—", note: `${productsCount.count ?? 0} products in catalogue` },
+    { label: "Low-stock alerts", value: lowStock.count ?? "—", note: "Published products with 3 or fewer units" },
   ];
 
   return (
     <section className="admin-content">
-      <div className="admin-page-heading"><div><span className="eyebrow">STORE OPERATIONS</span><h1>Good to see you, <em>owner.</em></h1><p>Manage the catalogue and keep customer orders moving.</p></div><Link className="button button-primary" href="/admin/products/new">Add product</Link></div>
-      <div className="admin-stats-grid admin-stats-grid-v16">{stats.map((stat) => <article key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong></article>)}</div>
-      <div className="admin-shortcuts-grid">
-        <Link href="/admin/products"><strong>Product inventory</strong><span>Create listings, manage prices, stock and photos.</span></Link>
-        <Link href="/admin/categories"><strong>Categories</strong><span>Organise laptop and accessory catalogue groups.</span></Link>
-        <Link href="/admin/orders"><strong>Order desk</strong><span>Review orders, confirm payment and update progress.</span></Link>
-        <Link href="/admin/customers"><strong>Customer records</strong><span>View account contact details and recorded consent.</span></Link>
-        <Link href="/admin/testimonials"><strong>Customer testimonials</strong><span>Add YouTube videos, moderate reviews and publish customer stories.</span></Link>
+      <div className="admin-page-heading">
+        <div>
+          <span className="eyebrow">STORE OVERVIEW</span>
+          <h1>Good morning, <em>Store Owner.</em></h1>
+          <p>Your store at a glance. Keep inventory accurate, fulfil customer requests and publish new arrivals.</p>
+        </div>
+        <Link className="button button-primary" href="/admin/products/new">+ Add product</Link>
       </div>
-      <section className="admin-panel">
-        <div className="admin-panel-head"><div><h2>Recent orders</h2><p>Latest orders recorded by the store database.</p></div><Link href="/admin/orders">View all orders →</Link></div>
-        {!recentResult.data?.length ? <div className="admin-empty">No orders have been placed yet. Orders will appear here after the development database is connected and checkout is configured.</div> : <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Total</th><th>Date</th><th /></tr></thead><tbody>{recentResult.data.map((order) => <tr key={order.id}><td>{order.order_number}</td><td>{order.customer_name}</td><td><span className="admin-pill">{order.status.replaceAll("_", " ")}</span></td><td>Rs. {Number(order.total_pkr).toLocaleString("en-PK")}</td><td>{new Date(order.created_at).toLocaleDateString("en-PK")}</td><td><Link href={`/admin/orders/${order.order_number}`}>Open</Link></td></tr>)}</tbody></table></div>}
-      </section>
-      <p className="admin-v16-note">Only products marked Published appear in the public catalogue. Only testimonials with confirmed customer permission and Published status appear on the homepage.</p>
+
+      <div className="admin-stats-grid admin-stats-grid-v16">
+        {stats.map((stat) => (
+          <article key={stat.label}>
+            <span>{stat.label}</span>
+            <strong>{stat.value}</strong>
+            <small>{stat.note}</small>
+          </article>
+        ))}
+      </div>
+
+      <div className="admin-dashboard-columns">
+        <div className="admin-dashboard-main">
+          <section className="admin-panel admin-sales-card">
+            <div className="admin-panel-head">
+              <div><h2>Sales trend</h2><p>Monthly revenue from orders marked as fully paid</p></div>
+              <span className="admin-chart-period">Last 6 months</span>
+            </div>
+            <div className="admin-sales-chart" role="img" aria-label="Monthly paid revenue chart">
+              {monthBuckets.map((month) => (
+                <div className="admin-sales-month" key={month.key}>
+                  <div className="admin-sales-bar-track">
+                    <span className="admin-sales-bar" style={{ height: `${month.total > 0 ? Math.max(8, month.total / maxMonthlyRevenue * 100) : 3}%` }} />
+                  </div>
+                  <span>{month.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="admin-chart-footnote"><span>Paid sales are counted after payment is verified.</span><strong>{formatPKR(monthBuckets.reduce((sum, item) => sum + item.total, 0))}</strong></div>
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel-head">
+              <div><h2>Product catalogue</h2><p>Latest products and their current publishing status</p></div>
+              <Link href="/admin/products">Manage catalogue →</Link>
+            </div>
+            {!recentProducts.data?.length ? (
+              <div className="admin-empty">
+                Your catalogue is ready for inventory. Add a product, upload its photos and publish it when its price, condition and stock are confirmed.
+                <div className="admin-empty-action"><Link className="button button-primary" href="/admin/products/new">Create first product</Link></div>
+              </div>
+            ) : (
+              <div className="admin-table-wrap">
+                <table className="admin-table admin-products-preview-table">
+                  <thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th /></tr></thead>
+                  <tbody>
+                    {recentProducts.data.map((product) => (
+                      <tr key={product.id}>
+                        <td><strong>{product.title}</strong><small>{product.brand}</small></td>
+                        <td>{product.price_pkr ? formatPKR(Number(product.price_pkr)) : "Not set"}</td>
+                        <td>{product.stock}</td>
+                        <td><span className={`admin-pill admin-pill-${product.status}`}>{product.status}</span></td>
+                        <td><Link href={`/admin/products/${product.id}`}>Edit</Link></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel-head">
+              <div><h2>Recent orders</h2><p>Latest customer order requests</p></div>
+              <Link href="/admin/orders">View all orders →</Link>
+            </div>
+            {!recentOrders.data?.length ? (
+              <div className="admin-empty">No orders yet. New requests will appear here when customers check out.</div>
+            ) : (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Payment</th><th>Total</th><th /></tr></thead>
+                  <tbody>
+                    {recentOrders.data.map((order) => (
+                      <tr key={order.id}>
+                        <td>{order.order_number}</td>
+                        <td>{order.customer_name}</td>
+                        <td><span className="admin-pill">{order.status.replaceAll("_", " ")}</span></td>
+                        <td>{order.payment_status.replaceAll("_", " ")}</td>
+                        <td>{formatPKR(Number(order.total_pkr))}</td>
+                        <td><Link href={`/admin/orders/${order.order_number}`}>Open</Link></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="admin-dashboard-side">
+          <section className="admin-panel admin-quick-panel">
+            <div className="admin-panel-head"><div><h2>Quick actions</h2><p>Common store tasks</p></div></div>
+            <Link href="/admin/products/new">Add a new product <span>→</span></Link>
+            <Link href="/admin/orders">Review new orders <span>→</span></Link>
+            <Link href="/admin/testimonials">Add a testimonial <span>→</span></Link>
+            <Link href="/admin/categories">Manage categories <span>→</span></Link>
+            <Link href="/admin/customers">View customers <span>→</span></Link>
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel-head"><div><h2>Store activity</h2><p>Customer engagement at a glance</p></div></div>
+            <div className="admin-side-stat"><span>Customer accounts</span><strong>{customers.count ?? "—"}</strong></div>
+            <div className="admin-side-stat"><span>Published testimonials</span><strong>{publishedTestimonials.count ?? "—"}</strong></div>
+            <div className="admin-side-stat"><span>Pending testimonials</span><strong>{pendingTestimonials.count ?? "—"}</strong></div>
+            <div className="admin-side-stat"><span>Categories</span><strong>{(await supabase.from("categories").select("id", { count: "exact", head: true })).count ?? "—"}</strong></div>
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel-head"><div><h2>Latest testimonials</h2><p>Customer stories and video reviews</p></div><Link href="/admin/testimonials">Manage →</Link></div>
+            {!latestTestimonials.data?.length ? <div className="admin-empty">Customer stories will appear here after they are added.</div> : (
+              <div className="admin-recent-testimonials">
+                {latestTestimonials.data.map((item) => (
+                  <article key={item.id}>
+                    <div><strong>{item.display_name}</strong><span>{item.status}</span></div>
+                    <p>{item.headline}</p>
+                    {item.youtube_url && <a href={item.youtube_url} target="_blank" rel="noopener noreferrer">Watch video ↗</a>}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <p className="admin-v16-note">Only active products appear in the public catalogue. Published testimonials appear publicly only after customer consent is confirmed.</p>
     </section>
   );
 }
