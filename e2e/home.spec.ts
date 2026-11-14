@@ -30,13 +30,14 @@ test("the wishlist stores a selected product in the browser", async ({ page }) =
 });
 
 
-test("the cart is separate from the WhatsApp enquiry list", async ({ page }) => {
+test("sample listings stay in the enquiry flow and do not enter the purchase cart", async ({ page }) => {
   await page.goto("/product/sample-macbook-air");
-  await page.getByRole("button", { name: /add to cart/i }).click();
-  await page.getByRole("link", { name: /shopping cart, 1 product types/i }).click();
-  await expect(page.getByRole("heading", { name: /your cart/i })).toBeVisible();
-  await expect(page.getByText(/this is a sample item and cannot be ordered/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /checkout unavailable/i })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /add to enquiry list/i })).toBeEnabled();
+  await page.getByRole("button", { name: /add to enquiry list/i }).click();
+  await expect(page.getByRole("link", { name: /enquiry list, 1 selected/i })).toBeVisible();
+  await page.goto("/cart");
+  await expect(page.getByRole("heading", { name: /your cart is waiting/i })).toBeVisible();
+  await expect(page.getByText(/explore the catalogue and add products/i)).toBeVisible();
 });
 
 test("customer registration and owner sign-in routes are separate", async ({ page }) => {
@@ -47,12 +48,12 @@ test("customer registration and owner sign-in routes are separate", async ({ pag
 });
 
 
-test("checkout page is available to guests but safely locked until real inventory and store settings exist", async ({ page }) => {
+test("checkout is available to guests but safely locked until real inventory and store settings exist", async ({ page }) => {
   await page.goto("/checkout");
-  await expect(page.getByRole("heading", { name: /checkout details/i })).toBeVisible();
-  await expect(page.getByText(/guest checkout does not require registration/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /place order/i })).toBeDisabled();
-  await expect(page.getByText(/checkout is not live yet/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /send an order request/i })).toBeVisible();
+  await expect(page.getByText(/you can also submit this request as a guest/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /submit order request/i })).toBeDisabled();
+  await expect(page.getByText(/order request unavailable/i)).toBeVisible();
 });
 
 
