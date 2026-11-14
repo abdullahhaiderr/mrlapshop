@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { getPublicProductBySlug } from "@/lib/catalogue";
 import { formatPKR } from "@/lib/format";
+import { getSiteUrl, serializeJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
@@ -20,7 +21,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: product.isDemo === false
       ? product.shortDescription || `View specifications, condition, current price and availability for ${product.brand} ${product.name} at Mr LapShop.`
       : `View this illustrative ${product.condition.toLowerCase()} ${product.brand} laptop sample from Mr LapShop.`,
+    alternates: { canonical: `/product/${product.slug}` },
+    robots: product.isDemo === false ? { index: true, follow: true } : { index: false, follow: false },
     openGraph: product.images?.[0]?.url ? { images: [{ url: product.images[0].url, alt: product.images[0].alt }] } : undefined,
+    twitter: {
+      card: "summary_large_image",
+      title: `${product.brand} ${product.name} | Mr LapShop`,
+      description: product.shortDescription || `Explore ${product.brand} ${product.name} at Mr LapShop in Rawalpindi.`,
+      images: product.images?.[0]?.url ? [product.images[0].url] : ["/opengraph-image"],
+    },
   };
 }
 
@@ -32,9 +41,30 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const isDemo = product.isDemo !== false;
   const canPurchase = !isDemo && Number.isInteger(product.pricePkr) && Number(product.pricePkr) > 0 && Number(product.stock) > 0;
   const displayImages = product.images ?? [];
+  const productJsonLd = !isDemo ? {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `${product.brand} ${product.name}`,
+    description: product.shortDescription || product.description || `View ${product.brand} ${product.name} at Mr LapShop.`,
+    image: displayImages.map((item) => item.url),
+    brand: { "@type": "Brand", name: product.brand },
+    category: product.category,
+    offers: product.pricePkr && product.pricePkr > 0 ? {
+      "@type": "Offer",
+      url: `${getSiteUrl()}/product/${product.slug}`,
+      priceCurrency: "PKR",
+      price: Number(product.pricePkr).toString(),
+      availability: Number(product.stock) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: product.condition === "New"
+        ? "https://schema.org/NewCondition"
+        : "https://schema.org/UsedCondition",
+      seller: { "@type": "Organization", name: "Mr LapShop" },
+    } : undefined,
+  } : null;
 
   return (
     <main className="inner-page product-detail-page">
+      {productJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }} />}
       <div className="container product-breadcrumb"><Link href="/">Home</Link><ChevronRight size={14} /><Link href="/shop">Shop</Link><ChevronRight size={14} /><span>{product.name}</span></div>
       <section className="container product-detail-layout">
         <ProductGallery images={displayImages} fallbackImage={product.image} productName={product.name} isDemo={isDemo} />
