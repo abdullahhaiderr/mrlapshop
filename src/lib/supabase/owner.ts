@@ -1,10 +1,12 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export async function requireStoreOwner() {
+export const requireStoreOwner = cache(async function requireStoreOwner() {
   if (!isSupabaseConfigured()) redirect("/admin/login?setup=required");
 
   const supabase = await createClient();
@@ -22,4 +24,4 @@ export async function requireStoreOwner() {
   }
 
   return { supabase, user };
-}
+});
