@@ -8,6 +8,7 @@ import {
 import { store } from "@/config/store";
 import type { CatalogueSnapshot } from "@/lib/catalogue";
 import type { PublicVideoTestimonial } from "@/lib/testimonials";
+import { serializeJsonLd } from "@/lib/seo";
 import { ProductCard } from "@/components/product/product-card";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { CustomerVideoSection } from "@/components/home/customer-video-section";
@@ -86,6 +87,20 @@ export function HomePage({ catalogue, testimonials }: { catalogue: CatalogueSnap
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqs.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: { "@type": "Answer", text: item.answer },
+            })),
+          }),
+        }}
+      />
       <section className="hero-section">
         <div className="hero-orbit hero-orbit-one" />
         <div className="hero-orbit hero-orbit-two" />
