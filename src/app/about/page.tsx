@@ -2,11 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, MapPin, Laptop, Headphones } from "lucide-react";
 import { store } from "@/config/store";
+import { getPageSocialMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "About Mr LapShop",
-  description: "Get to know Mr LapShop for new, used and open-box laptops, accessories and repair services in Rawalpindi and Islamabad.",
+  title: "About the store",
+  description: "Meet Mr LapShop, your local destination for new, used and open-box laptops, accessories, upgrades and repairs in Rawalpindi and Islamabad.",
   alternates: { canonical: "/about" },
+  ...getPageSocialMetadata(
+    "About Mr LapShop — Laptops, accessories and repairs in Rawalpindi",
+    "Meet the local Mr LapShop team and explore its laptop, accessory, upgrade and repair services across Rawalpindi and Islamabad.",
+    "/about",
+  ),
 };
 
 export default function AboutPage() {
