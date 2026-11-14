@@ -5,6 +5,7 @@ import { requireStoreOwner } from "@/lib/supabase/owner";
 import { ProductEditorForm } from "@/components/admin/product-editor-form";
 import { ProductImageUploader } from "@/components/admin/product-image-uploader";
 import { archiveProductAction, removeProductImageAction, sendProductAnnouncementAction } from "@/app/admin/(dashboard)/actions";
+import { DeleteProductButton } from "@/components/admin/delete-product-button";
 
 export const metadata = { title: "Edit product | Mr LapShop owner" };
 
@@ -50,6 +51,10 @@ export default async function EditProductPage({ params, searchParams }: { params
               <button className="button button-dark" type="submit">Send new-arrival email to opted-in customers</button>
             </form>
           : <div className="admin-empty">Resend setup is incomplete. Add RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel after verifying your sending domain in Resend, then redeploy.</div>}
+    </section>
+    <section className="admin-panel admin-delete-product-panel">
+      <div className="admin-panel-head"><div><h2>Danger zone</h2><p>Delete this listing and its product photos permanently. Existing order history remains intact.</p></div></div>
+      <DeleteProductButton productId={id} productTitle={product.title}/>
     </section>
     {product.status !== "archived" && <form action={archiveProductAction} className="admin-archive-form"><input type="hidden" name="id" value={id}/><div><strong>Archive this product</strong><p>Archiving hides the listing without deleting order-history references or product records.</p></div><button className="button button-outline" type="submit">Archive product</button></form>}
   </section>;
