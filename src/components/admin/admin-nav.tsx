@@ -17,9 +17,8 @@ const links: DashboardLink[] = [
   { href: "/admin/customers", label: "Customers", active: (path: string) => path.startsWith("/admin/customers") },
   { href: "/admin/testimonials", label: "Testimonials", active: (path: string, search: string) => path === "/admin/testimonials" && !search.includes("tab=reviews") },
   { href: "/admin/testimonials?tab=reviews", label: "Reviews", active: (path: string, search: string) => path === "/admin/testimonials" && search.includes("tab=reviews") },
-  { href: "/admin/activity?section=promotions", label: "Promotions", active: (path: string, search: string) => path === "/admin/activity" && search.includes("section=promotions") },
-  { href: "/admin/activity", label: "Analytics", active: (path: string, search: string) => path === "/admin/activity" && !search.includes("section=") },
-  { href: "/admin/activity?section=settings", label: "Settings", active: (path: string, search: string) => path === "/admin/activity" && search.includes("section=settings") },
+  { href: "/admin/promotions", label: "Promotions", active: (path: string) => path.startsWith("/admin/promotions") },
+  { href: "/admin/settings", label: "Settings", active: (path: string) => path.startsWith("/admin/settings") },
 ];
 
 export function AdminNav() {
