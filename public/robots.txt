@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /styleguide/
+Disallow: /admin
+Disallow: /account
+Disallow: /cart
+Disallow: /checkout
+Disallow: /enquiry
+Disallow: /wishlist
+Disallow: /order
+
+Sitemap: https://mrlapshop.vercel.app/sitemap.xml
