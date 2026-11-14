@@ -113,36 +113,13 @@ export function ProductEditorForm({ product, categories }: { product?: Product |
   return (
     <form action={product ? saveProductAction : undefined} onSubmit={isNewProduct ? handleCreateProduct : undefined} className="admin-form">
       <input type="hidden" name="id" value={product?.id ?? ""}/>
-      <section className="admin-form-section"><h2>Product identity</h2><div className="admin-form-grid">
-        <Field label="Display title" name="title" defaultValue={product?.title} required />
-        <Field label="URL slug" name="slug" defaultValue={product?.slug} required hint="Lowercase words separated with hyphens." />
-        <Field label="Brand" name="brand" defaultValue={product?.brand} required />
-        <Field label="Series" name="series" defaultValue={product?.series} />
-        <Field label="Model" name="model" defaultValue={product?.model} />
-        <label className="admin-field"><span>Category *</span><select name="categoryId" required defaultValue={product?.category_id ?? ""}><option value="">Choose a category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name} · {category.category_group}</option>)}</select></label>
-        <label className="admin-field"><span>Condition *</span><select name="condition" required defaultValue={product?.condition ?? "new"}><option value="new">New</option><option value="used">Used</option><option value="open_box">Open Box</option></select></label>
-        <Field label="SKU (optional)" name="sku" defaultValue={product?.sku ?? ""} hint="SKU may be entered on the product record later." />
-        <Field label="Cosmetic grade" name="cosmeticGrade" defaultValue={product?.cosmetic_grade} />
-      </div></section>
-      <section className="admin-form-section"><h2>Specifications</h2><div className="admin-form-grid">
-        <Field label="Processor family" name="cpuFamily" defaultValue={product?.cpu_family}/><Field label="Processor model" name="cpuModel" defaultValue={product?.cpu_model}/><Field label="Generation" name="generation" defaultValue={product?.generation}/>
-        <Field label="RAM (GB)" name="ramGb" type="number" defaultValue={product?.ram_gb}/><Field label="RAM type" name="ramType" defaultValue={product?.ram_type}/><Field label="Storage (GB)" name="storageGb" type="number" defaultValue={product?.storage_gb}/>
-        <Field label="Storage type" name="storageType" defaultValue={product?.storage_type}/><Field label="Screen size (inches)" name="screenIn" type="number" defaultValue={product?.screen_in}/><Field label="Resolution" name="resolution" defaultValue={product?.resolution}/>
-        <Field label="Graphics" name="gpu" defaultValue={product?.gpu}/><Field label="Operating system" name="operatingSystem" defaultValue={product?.operating_system}/><Field label="Battery / condition notes" name="batteryNote" defaultValue={product?.battery_note}/>
-      </div><div className="admin-check-row"><label><input type="checkbox" name="touch" defaultChecked={product?.touch ?? false}/> Touchscreen</label><label><input type="checkbox" name="twoInOne" defaultChecked={product?.two_in_one ?? false}/> 2-in-1 convertible</label></div></section>
-      <section className="admin-form-section"><h2>Price, stock and warranty</h2><div className="admin-form-grid">
-        <Field label="Price (PKR)" name="pricePkr" type="number" defaultValue={product?.price_pkr} hint="Leave blank for a draft that is not ready to sell."/><Field label="Compare-at price (PKR)" name="compareAtPkr" type="number" defaultValue={product?.compare_at_pkr}/><Field label="Available stock" name="stock" type="number" defaultValue={product?.stock ?? 0} required/>
-        <Field label="Warranty duration (months)" name="warrantyMonths" type="number" defaultValue={product?.warranty_months} hint="Use 0 only when the owner has confirmed no warranty applies."/><Field label="Warranty terms" name="warrantyTerms" defaultValue={product?.warranty_terms}/>
-        <label className="admin-field"><span>Listing status</span><select name="status" defaultValue={product?.status ?? "draft"}><option value="draft">Draft</option><option value="active">Published</option><option value="archived">Archived</option></select></label>
-      </div><div className="admin-product-flags"><label className="admin-check-label"><input type="checkbox" name="featured" defaultChecked={product?.featured ?? false}/> Feature this product in the catalogue</label><label className="admin-check-label"><input type="checkbox" name="performancePick" defaultChecked={product?.performance_pick ?? false}/> Show in The Beast Collection (high-performance / upgraded picks)</label></div></section>
-      <section className="admin-form-section"><h2>Product copy</h2><label className="admin-field"><span>Short description</span><textarea name="shortDescription" rows={2} defaultValue={product?.short_description ?? ""}/></label><label className="admin-field"><span>Full description</span><textarea name="description" rows={5} defaultValue={product?.description ?? ""}/></label></section>
       {!product && (
         <section className="admin-form-section admin-create-photos">
-          <div><h2>Product photos</h2><p className="admin-photo-intro">Add multiple product images now. The first photo becomes the main listing image; the second photo appears when shoppers hover over the product.</p></div>
+          <div className="admin-create-photos-heading"><span className="admin-photo-step">STEP 1 · PRODUCT IMAGES</span><h2>Upload product photos</h2><p className="admin-photo-intro">Choose the laptop photos before entering the rest of the details. The first image is the main product photo; the second appears when shoppers hover over the listing.</p></div>
           <label className="admin-field">
-            <span>Choose product images</span>
+            <span>Select images to upload <strong>· required for a photo listing</strong></span>
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={creating || uploading} onChange={(event) => selectProductPhotos(event.currentTarget.files)} />
-            <small>JPEG, PNG or WebP · 8 MB maximum per image · Up to 12 images at a time</small>
+            <small>Click to browse or drag files into the browser's file picker. JPEG, PNG or WebP · 8 MB max each · up to 12 images.</small>
           </label>
           {pendingImages.length > 0 && (
             <div className="admin-pending-images">
@@ -169,6 +146,29 @@ export function ProductEditorForm({ product, categories }: { product?: Product |
           )}
         </section>
       )}
+      <section className="admin-form-section"><h2>Product identity</h2><div className="admin-form-grid">
+        <Field label="Display title" name="title" defaultValue={product?.title} required />
+        <Field label="URL slug" name="slug" defaultValue={product?.slug} required hint="Lowercase words separated with hyphens." />
+        <Field label="Brand" name="brand" defaultValue={product?.brand} required />
+        <Field label="Series" name="series" defaultValue={product?.series} />
+        <Field label="Model" name="model" defaultValue={product?.model} />
+        <label className="admin-field"><span>Category *</span><select name="categoryId" required defaultValue={product?.category_id ?? ""}><option value="">Choose a category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name} · {category.category_group}</option>)}</select></label>
+        <label className="admin-field"><span>Condition *</span><select name="condition" required defaultValue={product?.condition ?? "new"}><option value="new">New</option><option value="used">Used</option><option value="open_box">Open Box</option></select></label>
+        <Field label="SKU (optional)" name="sku" defaultValue={product?.sku ?? ""} hint="SKU may be entered on the product record later." />
+        <Field label="Cosmetic grade" name="cosmeticGrade" defaultValue={product?.cosmetic_grade} />
+      </div></section>
+      <section className="admin-form-section"><h2>Specifications</h2><div className="admin-form-grid">
+        <Field label="Processor family" name="cpuFamily" defaultValue={product?.cpu_family}/><Field label="Processor model" name="cpuModel" defaultValue={product?.cpu_model}/><Field label="Generation" name="generation" defaultValue={product?.generation}/>
+        <Field label="RAM (GB)" name="ramGb" type="number" defaultValue={product?.ram_gb}/><Field label="RAM type" name="ramType" defaultValue={product?.ram_type}/><Field label="Storage (GB)" name="storageGb" type="number" defaultValue={product?.storage_gb}/>
+        <Field label="Storage type" name="storageType" defaultValue={product?.storage_type}/><Field label="Screen size (inches)" name="screenIn" type="number" defaultValue={product?.screen_in}/><Field label="Resolution" name="resolution" defaultValue={product?.resolution}/>
+        <Field label="Graphics" name="gpu" defaultValue={product?.gpu}/><Field label="Operating system" name="operatingSystem" defaultValue={product?.operating_system}/><Field label="Battery / condition notes" name="batteryNote" defaultValue={product?.battery_note}/>
+      </div><div className="admin-check-row"><label><input type="checkbox" name="touch" defaultChecked={product?.touch ?? false}/> Touchscreen</label><label><input type="checkbox" name="twoInOne" defaultChecked={product?.two_in_one ?? false}/> 2-in-1 convertible</label></div></section>
+      <section className="admin-form-section"><h2>Price, stock and warranty</h2><div className="admin-form-grid">
+        <Field label="Price (PKR)" name="pricePkr" type="number" defaultValue={product?.price_pkr} hint="Leave blank for a draft that is not ready to sell."/><Field label="Compare-at price (PKR)" name="compareAtPkr" type="number" defaultValue={product?.compare_at_pkr}/><Field label="Available stock" name="stock" type="number" defaultValue={product?.stock ?? 0} required/>
+        <Field label="Warranty duration (months)" name="warrantyMonths" type="number" defaultValue={product?.warranty_months} hint="Use 0 only when the owner has confirmed no warranty applies."/><Field label="Warranty terms" name="warrantyTerms" defaultValue={product?.warranty_terms}/>
+        <label className="admin-field"><span>Listing status</span><select name="status" defaultValue={product?.status ?? "draft"}><option value="draft">Draft</option><option value="active">Published</option><option value="archived">Archived</option></select></label>
+      </div><div className="admin-product-flags"><label className="admin-check-label"><input type="checkbox" name="featured" defaultChecked={product?.featured ?? false}/> Feature this product in the catalogue</label><label className="admin-check-label"><input type="checkbox" name="performancePick" defaultChecked={product?.performance_pick ?? false}/> Show in The Beast Collection (high-performance / upgraded picks)</label></div></section>
+      <section className="admin-form-section"><h2>Product copy</h2><label className="admin-field"><span>Short description</span><textarea name="shortDescription" rows={2} defaultValue={product?.short_description ?? ""}/></label><label className="admin-field"><span>Full description</span><textarea name="description" rows={5} defaultValue={product?.description ?? ""}/></label></section>
       <div className="admin-form-footer"><p>Required product facts must be verified by the shop owner. Publishing is blocked until a price and warranty decision are entered.</p><button className="button button-primary" type="submit" disabled={creating || uploading || Boolean(createdProductId)}>{creating ? "Saving product…" : product ? "Save changes" : createdProductId ? "Product saved" : "Create product & upload photos"}</button></div>
     </form>
   );
