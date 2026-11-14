@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-const links = [
+type DashboardLink = {
+  href: string;
+  label: string;
+  active: (path: string, search: string) => boolean;
+};
+
+const links: DashboardLink[] = [
   { href: "/admin", label: "Overview", active: (path: string) => path === "/admin" },
   { href: "/admin/products", label: "Products", active: (path: string, search: string) => path === "/admin/products" && !search.includes("status=active") },
   { href: "/admin/orders", label: "Orders", active: (path: string) => path.startsWith("/admin/orders") },
