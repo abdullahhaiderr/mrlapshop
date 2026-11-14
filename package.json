@@ -35,7 +35,7 @@
     "vitest": "^4.0.18"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": "22.x"
   },
   "description": "Mr LapShop storefront with pending order requests, 100% payment confirmation policy, live catalogue, continuous arrivals carousel and owner-curated performance collection"
 }
