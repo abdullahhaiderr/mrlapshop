@@ -88,5 +88,6 @@ test("customer YouTube testimonials play in a same-page modal", async ({ page })
 test("robots.txt advertises the official Mr LapShop sitemap", async ({ request }) => {
   const response = await request.get("/robots.txt");
   expect(response.ok()).toBeTruthy();
-  await expect(response.text()).resolves.toContain("Sitemap: https://mrlapshop.pk/sitemap.xml");
+  const robots = await response.text();
+  expect(robots).toContain("Sitemap: https://mrlapshop.pk/sitemap.xml");
 });
