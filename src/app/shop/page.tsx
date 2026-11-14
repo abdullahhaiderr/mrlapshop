@@ -6,6 +6,7 @@ import { catalogueCategories } from "@/config/store";
 export const metadata: Metadata = {
   title: "Shop laptops and accessories",
   description: "Browse currently published laptops and accessories from Mr LapShop in Rawalpindi. Filter by brand, condition, budget, processor, memory and availability.",
+  alternates: { canonical: "/shop" },
 };
 
 export const dynamic = "force-dynamic";
