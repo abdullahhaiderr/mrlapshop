@@ -1960,3 +1960,37 @@ body:has(.admin-page) .whatsapp-float { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .admin-sidebar .admin-nav a, .product-image-hover, .product-image-primary { transition: none; }
 }
+
+
+/* Admin overview panels and data visualizations. */
+.admin-stats-grid-v16 article small { color: #9aa3af; font-size: 9px; line-height: 1.4; }
+.admin-dashboard-columns { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .85fr); align-items: start; gap: 16px; }
+.admin-dashboard-main, .admin-dashboard-side { display: grid; min-width: 0; gap: 16px; }
+.admin-sales-card { display: grid; gap: 10px; }
+.admin-chart-period { padding: 6px 9px; border: 1px solid #e7eaf0; border-radius: 7px; color: #7d8796; font-size: 9px; font-weight: 750; white-space: nowrap; }
+.admin-sales-chart { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: end; gap: 14px; min-height: 150px; padding: 8px 4px 0; }
+.admin-sales-month { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; min-width: 0; text-align: center; }
+.admin-sales-bar-track { display: flex; align-items: end; min-height: 116px; overflow: hidden; border-radius: 7px 7px 3px 3px; background: #f3f5f7; }
+.admin-sales-bar { display: block; width: 100%; min-height: 2px; border-radius: 7px 7px 3px 3px; background: #c7ef4d; transition: height .25s ease; }
+.admin-sales-month > span { color: #929baa; font-size: 9px; font-weight: 700; }
+.admin-chart-footnote { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid #edf0f3; }
+.admin-chart-footnote span { color: #9aa3af; font-size: 9px; }
+.admin-chart-footnote strong { color: #253144; font-size: 12px; }
+.admin-empty-action { margin-top: 12px; }
+.admin-quick-panel > a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid #edf0f3; border-radius: 8px; color: #435065; font-size: 10px; font-weight: 750; transition: border-color .18s ease, background .18s ease; }
+.admin-quick-panel > a:hover { border-color: #d5e99b; background: #fbfff2; color: #273419; }
+.admin-quick-panel > a span { color: #8f9caa; font-size: 14px; }
+.admin-side-stat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eff1f4; }
+.admin-side-stat:last-child { border-bottom: 0; }
+.admin-side-stat span { color: #7f8998; font-size: 10px; }
+.admin-side-stat strong { color: #202d40; font-size: 16px; }
+.admin-recent-testimonials { display: grid; gap: 11px; }
+.admin-recent-testimonials article { padding-bottom: 11px; border-bottom: 1px solid #eff1f4; }
+.admin-recent-testimonials article:last-child { padding-bottom: 0; border-bottom: 0; }
+.admin-recent-testimonials article > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.admin-recent-testimonials strong { color: #273347; font-size: 10px; }
+.admin-recent-testimonials article > div > span { color: #8b96a5; font-size: 8px; text-transform: capitalize; }
+.admin-recent-testimonials p { margin: 5px 0; color: #697587; font-size: 9px; line-height: 1.55; }
+.admin-recent-testimonials a { color: #766a16; font-size: 9px; font-weight: 800; }
+@media (max-width: 1020px) { .admin-dashboard-columns { grid-template-columns: 1fr; } .admin-dashboard-side { grid-template-columns: repeat(2, minmax(0,1fr)); } .admin-dashboard-side > .admin-panel:last-child { grid-column: 1 / -1; } }
+@media (max-width: 600px) { .admin-dashboard-side { grid-template-columns: 1fr; } .admin-dashboard-side > .admin-panel:last-child { grid-column: auto; } .admin-sales-chart { gap: 8px; } .admin-chart-footnote { align-items: flex-start; flex-direction: column; } }
