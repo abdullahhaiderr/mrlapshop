@@ -8,6 +8,7 @@ import { SocialLinks } from "@/components/brand/social-links";
 export const metadata: Metadata = {
   title: "Contact Mr LapShop",
   description: "Contact Mr LapShop for laptops, accessories, upgrades and laptop repair in Rawalpindi and Islamabad.",
+  alternates: { canonical: "/contact" },
 };
 
 type ContactPageProps = {
