@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const links = [
   { href: "/admin", label: "Overview", active: (path: string) => path === "/admin" },
-  { href: "/admin/products", label: "Products", active: (path: string) => path === "/admin/products" && !window.location.search.includes("status=active") },
+  { href: "/admin/products", label: "Products", active: (path: string, search: string) => path === "/admin/products" && !search.includes("status=active") },
   { href: "/admin/orders", label: "Orders", active: (path: string) => path.startsWith("/admin/orders") },
   { href: "/admin/products?status=active", label: "Inventory", active: (path: string, search: string) => path === "/admin/products" && search.includes("status=active") },
   { href: "/admin/customers", label: "Customers", active: (path: string) => path.startsWith("/admin/customers") },
