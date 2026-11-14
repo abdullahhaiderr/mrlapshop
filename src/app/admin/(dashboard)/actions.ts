@@ -150,12 +150,34 @@ export async function saveProductAction(formData: FormData) {
 export async function archiveProductAction(formData: FormData) {
   const { supabase, user } = await requireStoreOwner();
   const id = formText(formData, "id");
-  const parsedId = z.uuid().safeParse(id);
-  if (!parsedId.success) redirect("/admin/products?error=invalid_id");
-  const { error } = await supabase.from("products").update({ status: "archived" }).eq("id", id);
-  if (error) redirect(`/admin/products/${id}?error=archive`);
-  await recordAudit(supabase, user.id, "product.archived", "product", id);
+  if (!z.uuid().safeParse(id).success) redirect("/admin/products?error=invalid_id");
+
+  const { data: product, error: readError } = await supabase.from("products")
+    .select("id, title, slug, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (readError || !product) redirect(`/admin/products/${id}?error=not_found`);
+
+  const { data: archivedProduct, error } = await supabase.from("products")
+    .update({ status: "archived" })
+    .eq("id", id)
+    .select("id, status, slug")
+    .maybeSingle();
+  if (error || !archivedProduct) {
+    console.error("[admin-product] Archive update failed or matched no row.", { code: error?.code });
+    redirect(`/admin/products/${id}?error=archive`);
+  }
+
+  await recordAudit(supabase, user.id, "product.archived", "product", id, {
+    previous_status: product.status,
+    status: archivedProduct.status,
+  });
+  revalidatePath("/admin");
   revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${id}`);
+  revalidatePath("/shop");
+  revalidatePath("/");
+  revalidatePath(`/product/${archivedProduct.slug}`);
   redirect("/admin/products?archived=1");
 }
 
