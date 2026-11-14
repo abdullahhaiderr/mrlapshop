@@ -412,6 +412,7 @@ export async function sendProductAnnouncementAction(formData: FormData) {
   if (!z.uuid().safeParse(productId).success) redirect("/admin/products?error=invalid_id");
 
   const productPath = `/admin/products/${productId}`;
+  if (formData.get("confirmSend") !== "yes") redirect(`${productPath}?emailError=confirmation_required`);
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim();
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://mrlapshop.pk").replace(/\/+$/, "");
