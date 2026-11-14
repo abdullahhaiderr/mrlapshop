@@ -23,12 +23,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       : `View this illustrative ${product.condition.toLowerCase()} ${product.brand} laptop sample from Mr LapShop.`,
     alternates: { canonical: `/product/${product.slug}` },
     robots: product.isDemo === false ? { index: true, follow: true } : { index: false, follow: false },
-    openGraph: product.images?.[0]?.url ? { images: [{ url: product.images[0].url, alt: product.images[0].alt }] } : undefined,
+    openGraph: {
+      type: "website",
+      url: `${getSiteUrl()}/product/${product.slug}`,
+      siteName: "Mr LapShop",
+      title: `${product.brand} ${product.name} at Mr LapShop`,
+      description: product.shortDescription || `Explore the ${product.brand} ${product.name}, its condition, confirmed specifications and availability at Mr LapShop in Rawalpindi.`,
+      images: [{
+        url: product.images?.[0]?.url ?? "/opengraph-image",
+        alt: product.images?.[0]?.alt ?? `${product.brand} ${product.name} at Mr LapShop`,
+      }],
+    },
     twitter: {
       card: "summary_large_image",
-      title: `${product.brand} ${product.name} | Mr LapShop`,
+      title: `${product.brand} ${product.name} at Mr LapShop`,
       description: product.shortDescription || `Explore ${product.brand} ${product.name} at Mr LapShop in Rawalpindi.`,
-      images: product.images?.[0]?.url ? [product.images[0].url] : ["/opengraph-image"],
+      images: [product.images?.[0]?.url ?? "/opengraph-image"],
     },
   };
 }
