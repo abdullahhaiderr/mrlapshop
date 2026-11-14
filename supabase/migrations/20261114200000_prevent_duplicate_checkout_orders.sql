@@ -41,7 +41,7 @@ declare
 begin
   -- Legacy callers without a key still work during rollout, but the new checkout always supplies one.
   if p_idempotency_key is null then
-    p_idempotency_key := extensions.gen_random_uuid();
+    p_idempotency_key := gen_random_uuid();
   end if;
 
   -- Serialize concurrent submissions that carry the same checkout key.
