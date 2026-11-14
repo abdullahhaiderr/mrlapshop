@@ -60,7 +60,7 @@ test("checkout is available to guests but safely locked until real inventory and
 test("Shop mega menu keeps the intro and catalogue columns separate", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
-  await page.getByRole("button", { name: /^shop$/i }).click();
+  await page.getByRole("button", { name: /^shop$/i }).hover();
   const menu = page.locator(".mega-menu-expanded");
   await expect(menu).toBeVisible();
   const intro = await menu.locator(".mega-menu-intro").boundingBox();
