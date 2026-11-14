@@ -2345,3 +2345,37 @@ body:has(.admin-page) .whatsapp-float { display: none; }
 @media (max-width: 820px) {
   .admin-sidebar { width: 100%; }
 }
+
+
+/* Final Shop mega-menu anchoring fix:
+   the panel must be positioned against the centered header row, not the
+   small Shop trigger. This prevents the left side being cut off. */
+.site-header .header-main { position: relative; }
+.site-header .desktop-nav .nav-dropdown { position: static; }
+.site-header .mega-menu-expanded {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  right: auto;
+  width: min(1280px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  z-index: 120;
+}
+.site-header .mega-menu-expanded .mega-menu-intro,
+.site-header .mega-menu-expanded .mega-menu-catalog,
+.site-header .mega-menu-expanded .mega-menu-group {
+  min-width: 0;
+}
+.site-header .mega-menu-expanded::before {
+  top: -9px;
+  height: 12px;
+  pointer-events: auto;
+}
+@media (max-width: 1120px) and (min-width: 961px) {
+  .site-header .mega-menu-expanded {
+    width: min(1040px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+  }
+}
