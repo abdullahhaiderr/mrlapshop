@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+
+export const metadata = { robots: { index: false, follow: false } };
 import { requireStoreOwner } from "@/lib/supabase/owner";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { signOutAction } from "@/app/account/actions";
