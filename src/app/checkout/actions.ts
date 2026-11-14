@@ -17,6 +17,7 @@ const checkoutSchema = z.object({
   addressLine: z.string().trim().max(500).optional(),
   postalCode: z.string().trim().max(20).optional(),
   customerNotes: z.string().trim().max(1000).optional(),
+  idempotencyKey: z.uuid(),
   items: z.array(z.object({ productId: z.uuid(), quantity: z.number().int().min(1).max(10) })).min(1).max(20),
 });
 
@@ -57,6 +58,11 @@ async function notifyShopOfOrderRequest(payload: {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `mrlapshop-order-notification-${payload.orderNumber}`,
+      },
       body: JSON.stringify({ from, to: [to], subject: `New order request ${payload.orderNumber} | Mr LapShop`, text }),
       cache: "no-store",
     });
@@ -91,6 +97,7 @@ export async function placeOrderAction(_state: CheckoutState, formData: FormData
     addressLine: formData.get("addressLine") || undefined,
     postalCode: formData.get("postalCode") || undefined,
     customerNotes: formData.get("customerNotes") || undefined,
+    idempotencyKey: formData.get("idempotencyKey"),
     items: parsedItems,
   });
 
@@ -112,6 +119,7 @@ export async function placeOrderAction(_state: CheckoutState, formData: FormData
     p_customer_notes: parsed.data.customerNotes ?? "",
     p_items: parsed.data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
     p_promo_code: String(formData.get("promoCode") ?? "").trim().toUpperCase() || null,
+    p_idempotency_key: parsed.data.idempotencyKey,
   });
 
   if (error || !data) {
