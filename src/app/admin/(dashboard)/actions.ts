@@ -542,3 +542,83 @@ export async function sendProductAnnouncementAction(formData: FormData) {
   revalidatePath(productPath);
   redirect(`${productPath}?emailSent=${sent}`);
 }
+
+/**
+ * Create-mode action used by the Add Product screen. It returns the new product ID
+ * so the browser can upload selected photos directly to Supabase Storage before
+ * navigating away from the form.
+ */
+export async function createProductWithResultAction(formData: FormData): Promise<
+  { ok: true; productId: string } | { ok: false; error: string }
+> {
+  const { supabase, user } = await requireStoreOwner();
+  const parsed = productSchema.safeParse({
+    id: null,
+    title: formText(formData, "title"),
+    slug: formText(formData, "slug"),
+    brand: formText(formData, "brand"),
+    sku: formText(formData, "sku"),
+    series: formText(formData, "series"),
+    model: formText(formData, "model"),
+    categoryId: formText(formData, "categoryId"),
+    condition: formText(formData, "condition"),
+    cosmeticGrade: formText(formData, "cosmeticGrade"),
+    cpuFamily: formText(formData, "cpuFamily"),
+    cpuModel: formText(formData, "cpuModel"),
+    generation: formText(formData, "generation"),
+    ramGb: formText(formData, "ramGb"),
+    ramType: formText(formData, "ramType"),
+    storageGb: formText(formData, "storageGb"),
+    storageType: formText(formData, "storageType"),
+    screenIn: formText(formData, "screenIn"),
+    resolution: formText(formData, "resolution"),
+    touch: formBoolean(formData.get("touch")),
+    twoInOne: formBoolean(formData.get("twoInOne")),
+    gpu: formText(formData, "gpu"),
+    operatingSystem: formText(formData, "operatingSystem"),
+    batteryNote: formText(formData, "batteryNote"),
+    warrantyMonths: formText(formData, "warrantyMonths"),
+    warrantyTerms: formText(formData, "warrantyTerms"),
+    pricePkr: formText(formData, "pricePkr"),
+    compareAtPkr: formText(formData, "compareAtPkr"),
+    stock: formText(formData, "stock") || "0",
+    status: formText(formData, "status"),
+    featured: formBoolean(formData.get("featured")),
+    performancePick: formBoolean(formData.get("performancePick")),
+    shortDescription: formText(formData, "shortDescription"),
+    description: formText(formData, "description"),
+  });
+
+  if (!parsed.success) return { ok: false, error: "validation" };
+  const value = parsed.data;
+  if (value.status === "active" && !canPublishProduct(value.pricePkr, value.warrantyMonths)) {
+    return { ok: false, error: "publish_requirements" };
+  }
+
+  const record = {
+    title: value.title, slug: value.slug, brand: value.brand, sku: value.sku, series: value.series, model: value.model,
+    category_id: value.categoryId, condition: value.condition, cosmetic_grade: value.cosmeticGrade,
+    cpu_family: value.cpuFamily, cpu_model: value.cpuModel, generation: value.generation,
+    ram_gb: value.ramGb, ram_type: value.ramType, storage_gb: value.storageGb, storage_type: value.storageType,
+    screen_in: value.screenIn, resolution: value.resolution, touch: value.touch, two_in_one: value.twoInOne,
+    gpu: value.gpu, operating_system: value.operatingSystem, battery_note: value.batteryNote,
+    warranty_months: value.warrantyMonths, warranty_terms: value.warrantyTerms, price_pkr: value.pricePkr,
+    compare_at_pkr: value.compareAtPkr, stock: value.stock, status: value.status, featured: value.featured,
+    performance_pick: value.performancePick,
+    short_description: value.shortDescription, description: value.description,
+  };
+
+  const { data, error } = await supabase.from("products").insert(record).select("id").single();
+  if (error || !data) {
+    const code = error?.code === "23505"
+      ? error.message.toLowerCase().includes("slug") ? "duplicate_slug" : "duplicate_sku"
+      : error?.code === "42501" ? "access_denied" : "save";
+    console.error("[admin-product] Create-mode insert failed.", { code: error?.code });
+    return { ok: false, error: code };
+  }
+
+  await recordAudit(supabase, user.id, "product.created", "product", data.id, { status: value.status });
+  revalidatePath("/admin/products");
+  revalidatePath("/admin");
+  return { ok: true, productId: data.id };
+}
