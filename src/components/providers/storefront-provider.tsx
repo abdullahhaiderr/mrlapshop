@@ -41,6 +41,7 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<StoredCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Intentional post-mount localStorage hydration; browser storage is unavailable during SSR and the empty initial state keeps server/client markup deterministic. */
   useEffect(() => {
     try {
       setEnquiryIds(parseStoredIdList(window.localStorage.getItem(ENQUIRY_STORAGE_KEY)));
@@ -51,6 +52,7 @@ export function StorefrontProvider({ children }: { children: ReactNode }) {
     }
     setHydrated(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!hydrated) return;
