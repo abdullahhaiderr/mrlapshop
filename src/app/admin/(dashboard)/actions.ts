@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -225,7 +226,7 @@ export async function updateOrderAction(formData: FormData) {
   });
   if (!parsed.success) redirect("/admin/orders?error=validation");
   const { data: currentOrder, error: loadError } = await supabase.from("orders")
-    .select("id, order_number, status, fulfillment, subtotal_pkr")
+    .select("id, order_number, status, fulfillment, subtotal_pkr, discount_pkr")
     .eq("id", parsed.data.orderId)
     .single();
   if (loadError || !currentOrder) redirect("/admin/orders?error=update");
@@ -241,7 +242,7 @@ export async function updateOrderAction(formData: FormData) {
     payment_status: parsed.data.paymentStatus,
     delivery_fee_pkr: deliveryFeePkr,
     delivery_fee_pending: deliveryFeePending,
-    total_pkr: Number(currentOrder.subtotal_pkr) + deliveryFeePkr,
+    total_pkr: Math.max(0, Number(currentOrder.subtotal_pkr) - Number(currentOrder.discount_pkr ?? 0)) + deliveryFeePkr,
   }).eq("id", parsed.data.orderId);
   if (error) {
     const code = error.message.includes("Full payment") ? "payment_required" : error.message.toLowerCase().includes("delivery fee") ? "delivery_fee_required" : "update";
@@ -691,4 +692,174 @@ export async function setProductVisibilityAction(formData: FormData) {
   revalidatePath("/admin/products");
   revalidatePath("/shop");
   redirect("/admin?productUpdated=1");
+}
+
+
+const storeSettingsSchema = z.object({
+  checkoutEnabled: z.boolean(),
+  pickupEnabled: z.boolean(),
+  deliveryEnabled: z.boolean(),
+  deliveryFeePkr: z.preprocess((value) => value === "" || value === null || value === undefined ? null : Number(value), z.number().int().nonnegative().nullable()),
+  jazzcashEnabled: z.boolean(),
+  easypaisaEnabled: z.boolean(),
+  ublBankEnabled: z.boolean(),
+});
+
+export async function saveStoreSettingsAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const parsed = storeSettingsSchema.safeParse({
+    checkoutEnabled: formBoolean(formData.get("checkoutEnabled")),
+    pickupEnabled: formBoolean(formData.get("pickupEnabled")),
+    deliveryEnabled: formBoolean(formData.get("deliveryEnabled")),
+    deliveryFeePkr: formText(formData, "deliveryFeePkr"),
+    jazzcashEnabled: formBoolean(formData.get("jazzcashEnabled")),
+    easypaisaEnabled: formBoolean(formData.get("easypaisaEnabled")),
+    ublBankEnabled: formBoolean(formData.get("ublBankEnabled")),
+  });
+  if (!parsed.success) redirect("/admin/settings?error=validation");
+  if (parsed.data.deliveryEnabled && parsed.data.deliveryFeePkr !== null && parsed.data.deliveryFeePkr > 1000000) {
+    redirect("/admin/settings?error=delivery_fee");
+  }
+  const { error } = await supabase.from("store_settings").update({
+    checkout_enabled: parsed.data.checkoutEnabled,
+    pickup_enabled: parsed.data.pickupEnabled,
+    delivery_enabled: parsed.data.deliveryEnabled,
+    delivery_fee_pkr: parsed.data.deliveryFeePkr,
+    jazzcash_enabled: parsed.data.jazzcashEnabled,
+    easypaisa_enabled: parsed.data.easypaisaEnabled,
+    ubl_bank_enabled: parsed.data.ublBankEnabled,
+    updated_by: user.id,
+    updated_at: new Date().toISOString(),
+  }).eq("singleton", true);
+  if (error) {
+    console.error("[admin-settings] Store settings save failed.", { code: error.code });
+    redirect("/admin/settings?error=save");
+  }
+  await recordAudit(supabase, user.id, "store.settings_updated", "store_settings", "singleton", {
+    checkout_enabled: parsed.data.checkoutEnabled,
+    pickup_enabled: parsed.data.pickupEnabled,
+    delivery_enabled: parsed.data.deliveryEnabled,
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/checkout");
+  revalidatePath("/");
+  redirect("/admin/settings?saved=1");
+}
+
+const promoCodeSchema = z.object({
+  code: z.string().trim().max(32).optional(),
+  description: nullableText,
+  discountType: z.enum(["percentage", "fixed"]),
+  discountValue: z.preprocess((value) => Number(value), z.number().int().positive().max(100000000)),
+  minimumOrderPkr: z.preprocess((value) => value === "" ? 0 : Number(value), z.number().int().nonnegative().max(100000000)),
+  maximumDiscountPkr: z.preprocess((value) => value === "" ? null : Number(value), z.number().int().positive().nullable()),
+  usageLimit: z.preprocess((value) => value === "" ? null : Number(value), z.number().int().positive().nullable()),
+  perCustomerLimit: z.preprocess((value) => value === "" ? 1 : Number(value), z.number().int().positive().max(1000)),
+});
+
+export async function createPromoCodeAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const parsed = promoCodeSchema.safeParse({
+    code: formText(formData, "code"),
+    description: formText(formData, "description"),
+    discountType: formText(formData, "discountType"),
+    discountValue: formText(formData, "discountValue"),
+    minimumOrderPkr: formText(formData, "minimumOrderPkr"),
+    maximumDiscountPkr: formText(formData, "maximumDiscountPkr"),
+    usageLimit: formText(formData, "usageLimit"),
+    perCustomerLimit: formText(formData, "perCustomerLimit"),
+  });
+  if (!parsed.success) redirect("/admin/promotions?error=validation");
+  if (parsed.data.discountType === "percentage" && parsed.data.discountValue > 100) redirect("/admin/promotions?error=percentage");
+  if (parsed.data.discountType === "fixed" && parsed.data.maximumDiscountPkr !== null) redirect("/admin/promotions?error=max_discount");
+
+  const code = (parsed.data.code || ("MLS-" + randomBytes(4).toString("hex"))).trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9_-]{3,31}$/.test(code)) redirect("/admin/promotions?error=code");
+  const startsRaw = formText(formData, "startsAt");
+  const expiresRaw = formText(formData, "expiresAt");
+  const startsAt = startsRaw ? new Date(startsRaw) : null;
+  const expiresAt = expiresRaw ? new Date(expiresRaw) : null;
+  if ((startsAt && !Number.isFinite(startsAt.getTime())) || (expiresAt && !Number.isFinite(expiresAt.getTime()))) redirect("/admin/promotions?error=dates");
+  if (startsAt && expiresAt && expiresAt <= startsAt) redirect("/admin/promotions?error=dates");
+
+  const { data, error } = await supabase.from("promo_codes").insert({
+    code,
+    description: parsed.data.description,
+    discount_type: parsed.data.discountType,
+    discount_value: parsed.data.discountValue,
+    minimum_order_pkr: parsed.data.minimumOrderPkr,
+    maximum_discount_pkr: parsed.data.maximumDiscountPkr,
+    usage_limit: parsed.data.usageLimit,
+    per_customer_limit: parsed.data.perCustomerLimit,
+    starts_at: startsAt?.toISOString() ?? null,
+    expires_at: expiresAt?.toISOString() ?? null,
+    is_active: formData.get("isActive") === "on",
+    created_by: user.id,
+  }).select("id").single();
+
+  if (error || !data) {
+    console.error("[admin-promotions] Promo code create failed.", { code: error?.code });
+    redirect("/admin/promotions?error=" + (error?.code === "23505" ? "duplicate" : "save"));
+  }
+  await recordAudit(supabase, user.id, "promo_code.created", "promo_code", data.id, {
+    code, discount_type: parsed.data.discountType, discount_value: parsed.data.discountValue,
+  });
+  revalidatePath("/admin/promotions");
+  revalidatePath("/checkout");
+  redirect("/admin/promotions?created=" + encodeURIComponent(code));
+}
+
+export async function setPromoCodeStatusAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const id = formText(formData, "id");
+  const active = formData.get("isActive") === "true";
+  if (!z.uuid().safeParse(id).success) redirect("/admin/promotions?error=invalid_id");
+  const { error } = await supabase.from("promo_codes").update({
+    is_active: active,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) redirect("/admin/promotions?error=save");
+  await recordAudit(supabase, user.id, active ? "promo_code.activated" : "promo_code.deactivated", "promo_code", id);
+  revalidatePath("/admin/promotions");
+  redirect("/admin/promotions?saved=1");
+}
+
+export async function deleteProductAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const id = formText(formData, "productId");
+  if (!z.uuid().safeParse(id).success) redirect("/admin/products?error=invalid_id");
+
+  const [{ data: product, error: productReadError }, { data: images, error: imageReadError }] = await Promise.all([
+    supabase.from("products").select("id, title").eq("id", id).maybeSingle(),
+    supabase.from("product_images").select("storage_path").eq("product_id", id),
+  ]);
+  if (productReadError || !product || imageReadError) redirect("/admin/products?error=delete_read");
+
+  // The products -> order_items foreign key uses ON DELETE SET NULL, preserving every order snapshot.
+  const { error } = await supabase.from("products").delete().eq("id", id);
+  if (error) {
+    console.error("[admin-product] Permanent delete failed.", { code: error.code });
+    redirect("/admin/products/" + id + "?error=delete");
+  }
+
+  const storagePaths = (images ?? []).map((image) => image.storage_path);
+  let storageCleanup = "complete";
+  if (storagePaths.length) {
+    const { error: storageError } = await supabase.storage.from("product-images").remove(storagePaths);
+    if (storageError) {
+      storageCleanup = "pending";
+      console.error("[admin-product] Product deleted but photo cleanup needs review.", { code: storageError.message });
+    }
+  }
+
+  await recordAudit(supabase, user.id, "product.deleted", "product", id, {
+    title: product.title,
+    photo_count: storagePaths.length,
+    storage_cleanup: storageCleanup,
+    order_history_preserved: true,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/products");
+  revalidatePath("/shop");
+  redirect("/admin/products?deleted=1&storageCleanup=" + storageCleanup);
 }
