@@ -17,6 +17,7 @@ const checkoutSchema = z.object({
   addressLine: z.string().trim().max(500).optional(),
   postalCode: z.string().trim().max(20).optional(),
   customerNotes: z.string().trim().max(1000).optional(),
+  idempotencyKey: z.uuid(),
   items: z.array(z.object({ productId: z.uuid(), quantity: z.number().int().min(1).max(10) })).min(1).max(20),
 });
 
@@ -56,7 +57,11 @@ async function notifyShopOfOrderRequest(payload: {
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `mrlapshop-order-notification-${payload.orderNumber}`,
+      },
       body: JSON.stringify({ from, to: [to], subject: `New order request ${payload.orderNumber} | Mr LapShop`, text }),
       cache: "no-store",
     });
@@ -91,6 +96,7 @@ export async function placeOrderAction(_state: CheckoutState, formData: FormData
     addressLine: formData.get("addressLine") || undefined,
     postalCode: formData.get("postalCode") || undefined,
     customerNotes: formData.get("customerNotes") || undefined,
+    idempotencyKey: formData.get("idempotencyKey"),
     items: parsedItems,
   });
 
@@ -111,18 +117,22 @@ export async function placeOrderAction(_state: CheckoutState, formData: FormData
     p_postal_code: parsed.data.postalCode ?? "",
     p_customer_notes: parsed.data.customerNotes ?? "",
     p_items: parsed.data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
+    p_promo_code: String(formData.get("promoCode") ?? "").trim().toUpperCase() || null,
+    p_idempotency_key: parsed.data.idempotencyKey,
   });
 
   if (error || !data) {
     const message = error?.message ?? "Order could not be submitted.";
     return { error: message.includes("not enabled") || message.includes("not configured")
       ? "Online checkout is not active yet. The store owner still needs to approve payment and delivery settings."
-      : message.includes("price") || message.includes("stock") || message.includes("available")
-        ? "One or more products do not have confirmed live pricing or stock yet. Please contact the shop before ordering."
-        : "We could not submit your order. Please review your details or contact the shop." };
+      : message.toLowerCase().includes("promo")
+        ? "That promo code is no longer valid for this order. Check the code and try again."
+        : message.includes("price") || message.includes("stock") || message.includes("available")
+          ? "One or more products do not have confirmed live pricing or stock yet. Please contact the shop before ordering."
+          : "We could not submit your order. Please review your details or contact the shop." };
   }
 
-  const result = data as { order_number?: string; guest_tracking_token?: string | null; subtotal_pkr?: number; delivery_fee_pkr?: number; delivery_fee_pending?: boolean; total_pkr?: number };
+  const result = data as { order_number?: string; guest_tracking_token?: string | null; subtotal_pkr?: number; discount_pkr?: number; promo_code?: string | null; delivery_fee_pkr?: number; delivery_fee_pending?: boolean; total_pkr?: number };
   if (!result.order_number) return { error: "The order response was incomplete. Please contact the shop before trying again." };
 
   const emailNotification = await notifyShopOfOrderRequest({
@@ -157,4 +167,72 @@ export async function placeOrderAction(_state: CheckoutState, formData: FormData
   }
 
   return { orderNumber: result.order_number };
+}
+
+
+export type PromoCheckState = {
+  valid?: boolean;
+  code?: string;
+  discountPkr?: number;
+  subtotalPkr?: number;
+  message?: string;
+};
+
+export async function validatePromoCodeAction(_previous: PromoCheckState, formData: FormData): Promise<PromoCheckState> {
+  if (!isSupabaseConfigured()) return { valid: false, message: "Promo codes are temporarily unavailable." };
+  const code = String(formData.get("promoCode") ?? "").trim().toUpperCase();
+  if (!code) return { valid: false, message: "Enter a promo code." };
+
+  let rawItems: unknown;
+  try {
+    rawItems = JSON.parse(String(formData.get("itemsJson") ?? "[]"));
+  } catch {
+    return { valid: false, message: "Your cart could not be read. Refresh and try again." };
+  }
+  const itemSchema = z.array(z.object({
+    productId: z.uuid(),
+    quantity: z.number().int().min(1).max(10),
+  })).min(1).max(20);
+  const items = itemSchema.safeParse(rawItems);
+  if (!items.success) return { valid: false, message: "Add valid products to your cart first." };
+
+  const quantities = new Map<string, number>();
+  for (const item of items.data) quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+  if ([...quantities.values()].some((quantity) => quantity > 10)) {
+    return { valid: false, message: "A cart item exceeds the allowed quantity." };
+  }
+
+  const supabase = await createClient();
+  const { data: products, error: productsError } = await supabase.from("products")
+    .select("id, price_pkr")
+    .eq("status", "active")
+    .in("id", [...quantities.keys()]);
+  if (productsError || !products || products.length !== quantities.size) {
+    return { valid: false, message: "One or more products are no longer available. Refresh your cart." };
+  }
+
+  const subtotal = products.reduce((sum, product) => {
+    const price = Number(product.price_pkr ?? 0);
+    return sum + price * (quantities.get(product.id) ?? 0);
+  }, 0);
+  if (subtotal <= 0) return { valid: false, message: "Your cart has no eligible products." };
+
+  const { data, error } = await supabase.rpc("validate_promo_code", {
+    p_code: code,
+    p_subtotal: subtotal,
+    p_email: String(formData.get("email") ?? "").trim().toLowerCase(),
+  });
+  if (error) {
+    console.error("[checkout-promo] Validation failed.", { code: error.code });
+    return { valid: false, message: "We could not check that promo code right now. Please try again." };
+  }
+  const result = data as { valid?: boolean; message?: string; code?: string; discount_pkr?: number } | null;
+  if (!result?.valid) return { valid: false, message: result?.message ?? "This promo code is not available." };
+  return {
+    valid: true,
+    code: result.code ?? code,
+    discountPkr: Number(result.discount_pkr ?? 0),
+    subtotalPkr: subtotal,
+    message: "Promo code applied. The final discount will be verified again when you submit your order.",
+  };
 }

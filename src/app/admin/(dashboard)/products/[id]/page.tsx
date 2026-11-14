@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { requireStoreOwner } from "@/lib/supabase/owner";
 import { ProductEditorForm } from "@/components/admin/product-editor-form";
 import { ProductImageUploader } from "@/components/admin/product-image-uploader";
-import { archiveProductAction, removeProductImageAction, sendProductAnnouncementAction } from "@/app/admin/(dashboard)/actions";
+import { archiveProductAction, removeProductImageAction, sendProductAnnouncementAction, setProductVisibilityAction } from "@/app/admin/(dashboard)/actions";
+import { DeleteProductButton } from "@/components/admin/delete-product-button";
 
 export const metadata = { title: "Edit product | Mr LapShop owner" };
 
-export default async function EditProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string; created?: string; imageUploaded?: string; imageRemoved?: string; emailSent?: string; emailError?: string }> }) {
+export default async function EditProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string; created?: string; imageUploaded?: string; imageRemoved?: string; emailSent?: string; emailError?: string; republished?: string }> }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const { supabase } = await requireStoreOwner();
   const [{ data: product }, { data: categories }, { data: images }] = await Promise.all([
@@ -32,7 +33,7 @@ export default async function EditProductPage({ params, searchParams }: { params
     {query.emailError === "not_ready" && <p className="form-feedback form-feedback-error">Publish this product with a valid price and available stock before announcing it.</p>}
     {query.emailError === "partial" && <p className="form-feedback form-feedback-error">Resend accepted only part of the announcement, or the request failed. Check Resend logs before retrying.</p>}
     {(query.emailError === "product" || query.emailError === "check" || query.emailError === "recipients" || query.emailError === "too_many") && <p className="form-feedback form-feedback-error">The customer list could not be prepared safely. Check the owner permissions and try again.</p>}
-    {query.saved && <p className="form-feedback form-feedback-success">Product updated.</p>}{query.created && <p className="form-feedback form-feedback-success">Product created. Add its photos below.</p>}{query.imageUploaded && <p className="form-feedback form-feedback-success">Product photo uploaded.</p>}{query.imageRemoved && <p className="form-feedback form-feedback-success">Product photo removed.</p>}
+    {query.saved && <p className="form-feedback form-feedback-success">Product updated.</p>}{query.republished && <p className="form-feedback form-feedback-success" role="status">Product republished and restored to the live storefront.</p>}{query.created && <p className="form-feedback form-feedback-success">Product created. Add its photos below.</p>}{query.imageUploaded && <p className="form-feedback form-feedback-success">Product photo uploaded.</p>}{query.imageRemoved && <p className="form-feedback form-feedback-success">Product photo removed.</p>}
     <ProductEditorForm product={product} categories={categories ?? []}/>
     <section className="admin-panel admin-image-panel"><div className="admin-panel-head"><div><h2>Product photos</h2><p>JPEG, PNG or WebP. Maximum 8 MB per image.</p></div></div>
       <ProductImageUploader productId={id} />
@@ -51,6 +52,10 @@ export default async function EditProductPage({ params, searchParams }: { params
             </form>
           : <div className="admin-empty">Resend setup is incomplete. Add RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel after verifying your sending domain in Resend, then redeploy.</div>}
     </section>
-    {product.status !== "archived" && <form action={archiveProductAction} className="admin-archive-form"><input type="hidden" name="id" value={id}/><div><strong>Archive this product</strong><p>Archiving hides the listing without deleting order-history references or product records.</p></div><button className="button button-outline" type="submit">Archive product</button></form>}
+    <section className="admin-panel admin-delete-product-panel">
+      <div className="admin-panel-head"><div><h2>Danger zone</h2><p>Delete this listing and its product photos permanently. Existing order history remains intact.</p></div></div>
+      <DeleteProductButton productId={id} productTitle={product.title}/>
+    </section>
+    {product.status === "archived" ? <form action={setProductVisibilityAction} className="admin-archive-form"><input type="hidden" name="id" value={id}/><input type="hidden" name="status" value="active"/><input type="hidden" name="returnTo" value="product"/><div><strong>Restore this archived product</strong><p>Republish this listing to make it visible in the live shop again. A confirmed price and warranty decision are required.</p></div><button className="button button-primary" type="submit">Republish product</button></form> : <form action={archiveProductAction} className="admin-archive-form"><input type="hidden" name="id" value={id}/><div><strong>Archive this product</strong><p>Archiving hides the listing without deleting order-history references or product records. You can republish it from the Archived filter later.</p></div><button className="button button-outline" type="submit">Archive product</button></form>}
   </section>;
 }

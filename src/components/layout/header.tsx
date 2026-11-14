@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Menu, Search, X, Phone, ChevronDown, Laptop, Headphones, Wrench, Heart, ShoppingBag, ShoppingCart, UserRound, MessageCircle, Cpu, Monitor, Gamepad2, Keyboard, Sparkles } from "lucide-react";
 import { navigation, store } from "@/config/store";
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -66,7 +66,28 @@ export function Header() {
   }, [pathname]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const shopCloseTimer = useRef<number | null>(null);
   const [search, setSearch] = useState("");
+
+  function openShopMenu() {
+    if (shopCloseTimer.current) {
+      window.clearTimeout(shopCloseTimer.current);
+      shopCloseTimer.current = null;
+    }
+    setShopOpen(true);
+  }
+
+  function scheduleShopMenuClose() {
+    if (shopCloseTimer.current) window.clearTimeout(shopCloseTimer.current);
+    shopCloseTimer.current = window.setTimeout(() => {
+      setShopOpen(false);
+      shopCloseTimer.current = null;
+    }, 260);
+  }
+  useEffect(() => () => {
+    if (shopCloseTimer.current) window.clearTimeout(shopCloseTimer.current);
+  }, []);
+
   const { enquiryIds, wishlistIds, cartItems } = useStorefront();
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
@@ -93,12 +114,12 @@ export function Header() {
 
         <nav className="desktop-nav" aria-label="Main navigation">
           <Link href="/">Home</Link>
-          <div className="nav-dropdown" onMouseEnter={() => setShopOpen(true)} onMouseLeave={() => setShopOpen(false)}>
+          <div className="nav-dropdown" onMouseEnter={openShopMenu} onMouseLeave={scheduleShopMenuClose}>
             <button className="nav-dropdown-trigger" type="button" aria-expanded={shopOpen} onClick={() => setShopOpen((open) => !open)}>
               Shop <ChevronDown size={15} aria-hidden="true" />
             </button>
             {shopOpen && (
-              <div className="mega-menu mega-menu-expanded">
+              <div className="mega-menu mega-menu-expanded" onMouseEnter={openShopMenu} onMouseLeave={scheduleShopMenuClose}>
                 <div className="mega-menu-intro">
                   <span className="eyebrow">THE MR LAPSHOP CATALOGUE</span>
                   <h3>Shop your way.</h3>
