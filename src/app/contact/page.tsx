@@ -23,7 +23,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
 
   return (
     <main className="inner-page">
-      <section className="page-hero page-hero-contact"><div className="container"><span className="eyebrow eyebrow-on-dark">WE'RE EASY TO FIND</span><h1>Let&apos;s talk <em>technology.</em></h1><p>Questions about a laptop or planning a visit? Find our contact details below.</p><div className="breadcrumb"><Link href="/">Home</Link><span>/</span><strong>Contact</strong></div></div></section>
+      <section className="page-hero page-hero-contact"><div className="container"><span className="eyebrow eyebrow-on-dark">WE&apos;RE EASY TO FIND</span><h1>Let&apos;s talk <em>technology.</em></h1><p>Questions about a laptop or planning a visit? Find our contact details below.</p><div className="breadcrumb"><Link href="/">Home</Link><span>/</span><strong>Contact</strong></div></div></section>
       <section className="section-block contact-page-section"><div className="container contact-page-grid">
         <div className="contact-info-panel card-depth"><span className="eyebrow">STORE DETAILS</span><h2>Come by, <em>we&apos;re here.</em></h2><p className="contact-intro">Visit the store in Satellite Town, Rawalpindi, or call us directly.</p>
           <div className="contact-info-item"><span><MapPin size={19} /></span><div><strong>Our address</strong><p>{store.address.full}</p><Link href={store.address.mapsUrl} target="_blank" rel="noreferrer">Open in Google Maps <ArrowUpRight size={15} /></Link></div></div>
