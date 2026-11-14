@@ -12,10 +12,6 @@ type Props = { products: DemoProduct[]; categories: PublicCategory[]; mode: Cata
 const conditions = ["All conditions", "New", "Used", "Open Box"];
 const pageSize = 12;
 
-function categoryLabel(slug: string, categories: PublicCategory[]) {
-  return categories.find((item) => item.slug === slug)?.name ?? catalogueCategories.find((item) => item.slug === slug)?.label ?? "All categories";
-}
-
 export function ShopCatalog({ products, categories, mode, connectionWarning, initialFilters }: Props) {
   const [filters, setFilters] = useState<Filters>({
     search: initialFilters.search ?? "", category: initialFilters.category ?? "", brand: initialFilters.brand ?? "",
