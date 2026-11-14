@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { requireStoreOwner } from "@/lib/supabase/owner";
+import { getYouTubeVideoId } from "@/lib/youtube";
 
 export const metadata = { title: "Owner dashboard | Mr LapShop" };
 
@@ -29,6 +31,7 @@ export default async function AdminPage() {
     paidOrdersThirtyDays,
     paidOrdersSixMonths,
     latestTestimonials,
+    activeCategoryProducts,
   ] = await Promise.all([
     supabase.from("products").select("id", { count: "exact", head: true }),
     supabase.from("categories").select("id", { count: "exact", head: true }),
@@ -44,6 +47,7 @@ export default async function AdminPage() {
     supabase.from("orders").select("total_pkr").eq("payment_status", "paid").gte("created_at", thirtyDaysAgo.toISOString()).limit(1000),
     supabase.from("orders").select("total_pkr, created_at").eq("payment_status", "paid").gte("created_at", sixMonthsAgo.toISOString()).limit(1000),
     supabase.from("customer_testimonials").select("id, display_name, headline, youtube_url, status, created_at").order("created_at", { ascending: false }).limit(3),
+    supabase.from("products").select("category_id, categories(name)").eq("status", "active").limit(1000),
   ]);
 
   const revenueThirtyDays = (paidOrdersThirtyDays.data ?? []).reduce((sum, order) => sum + Number(order.total_pkr || 0), 0);
@@ -61,6 +65,17 @@ export default async function AdminPage() {
     if (bucket) bucket.total += Number(order.total_pkr || 0);
   }
   const maxMonthlyRevenue = Math.max(1, ...monthBuckets.map((item) => item.total));
+  const categoryTotals = new Map<string, number>();
+  for (const product of activeCategoryProducts.data ?? []) {
+    const relation = product.categories as unknown as { name: string } | { name: string }[] | null;
+    const name = Array.isArray(relation) ? relation[0]?.name : relation?.name;
+    if (name) categoryTotals.set(name, (categoryTotals.get(name) ?? 0) + 1);
+  }
+  const topCategories = [...categoryTotals.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((first, second) => second.count - first.count)
+    .slice(0, 4);
+  const maxCategoryCount = Math.max(1, ...topCategories.map((item) => item.count));
 
   const stats = [
     { label: "Paid revenue · 30 days", value: formatPKR(revenueThirtyDays), note: "Verified paid orders only" },
@@ -188,16 +203,38 @@ export default async function AdminPage() {
           </section>
 
           <section className="admin-panel">
-            <div className="admin-panel-head"><div><h2>Latest testimonials</h2><p>Customer stories and video reviews</p></div><Link href="/admin/testimonials">Manage →</Link></div>
+            <div className="admin-panel-head"><div><h2>Top categories</h2><p>Published catalogue distribution</p></div><Link href="/admin/categories">Manage →</Link></div>
+            {!topCategories.length ? <div className="admin-empty">Your category structure is ready. Published products will appear here as soon as you add inventory.</div> : (
+              <div className="admin-category-bars">
+                {topCategories.map((category) => (
+                  <div className="admin-category-bar-row" key={category.name}>
+                    <div><strong>{category.name}</strong><span>{category.count} product{category.count === 1 ? "" : "s"}</span></div>
+                    <div className="admin-category-bar-track"><span style={{ width: `${category.count / maxCategoryCount * 100}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel-head"><div><h2>Video testimonials</h2><p>Latest customer stories</p></div><Link href="/admin/testimonials">Manage →</Link></div>
             {!latestTestimonials.data?.length ? <div className="admin-empty">Customer stories will appear here after they are added.</div> : (
               <div className="admin-recent-testimonials">
-                {latestTestimonials.data.map((item) => (
-                  <article key={item.id}>
-                    <div><strong>{item.display_name}</strong><span>{item.status}</span></div>
-                    <p>{item.headline}</p>
-                    {item.youtube_url && <a href={item.youtube_url} target="_blank" rel="noopener noreferrer">Watch video ↗</a>}
-                  </article>
-                ))}
+                {latestTestimonials.data.map((item) => {
+                  const videoId = item.youtube_url ? getYouTubeVideoId(item.youtube_url) : null;
+                  return (
+                    <article key={item.id}>
+                      {videoId ? (
+                        <a className="admin-recent-video" href={`https://www.youtube.com/watch?v=${videoId}`} target="_blank" rel="noopener noreferrer" aria-label={`Watch ${item.headline}`}>
+                          <Image src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`} alt={`Video thumbnail for ${item.headline}`} fill sizes="(max-width: 1020px) 40vw, 300px" />
+                          <span aria-hidden="true">▶</span>
+                        </a>
+                      ) : <div className="admin-recent-video admin-recent-video-empty">Written review</div>}
+                      <div><strong>{item.display_name}</strong><span>{item.status}</span></div>
+                      <p>{item.headline}</p>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
