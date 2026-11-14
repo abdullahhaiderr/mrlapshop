@@ -119,7 +119,7 @@ export function ProductEditorForm({ product, categories }: { product?: Product |
           <label className="admin-field">
             <span>Select images to upload <strong>· required for a photo listing</strong></span>
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={creating || uploading} onChange={(event) => selectProductPhotos(event.currentTarget.files)} />
-            <small>Click to browse or drag files into the browser's file picker. JPEG, PNG or WebP · 8 MB max each · up to 12 images.</small>
+            <small>Click to browse or drag files into the browser&apos;s file picker. JPEG, PNG or WebP · 8 MB max each · up to 12 images.</small>
           </label>
           {pendingImages.length > 0 && (
             <div className="admin-pending-images">
