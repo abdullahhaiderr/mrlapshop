@@ -107,7 +107,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <input name="q" type="search" placeholder="Search products, orders, customers" aria-label="Search products"/>
             <button type="submit" aria-label="Search"><span>⌕</span></button>
           </form>
-          <button className="dashboard-import-button" type="button" disabled title="CSV import is not available yet">Import CSV</button>
           <Link className="dashboard-add-button" href="/admin/products/new">+ Add product</Link>
         </div>
       </header>
@@ -249,7 +248,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
         <aside className="dashboard-panel dashboard-quick-panel">
           <div className="dashboard-panel-heading"><div><h2>Quick actions</h2><p>Common store tasks</p></div></div>
-          <button className="dashboard-quick-primary" type="button" disabled>Create discount code</button>
+          <Link className="dashboard-quick-primary" href="/admin/promotions">Create discount code</Link>
           <button type="button" disabled>Add homepage banner</button>
           <Link href="/admin/products?status=active">Update stock levels</Link>
           <Link href="/admin/orders">Print invoices</Link>
