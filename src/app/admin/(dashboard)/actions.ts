@@ -199,8 +199,13 @@ export async function removeProductImageAction(formData: FormData) {
   if (!z.uuid().safeParse(imageId).success || !z.uuid().safeParse(productId).success) redirect("/admin/products?error=invalid_image");
   const { data: image, error: readError } = await supabase.from("product_images").select("storage_path").eq("id", imageId).eq("product_id", productId).single();
   if (readError || !image) redirect(`/admin/products/${productId}?error=image_missing`);
-  const { error: rowError } = await supabase.from("product_images").delete().eq("id", imageId).eq("product_id", productId);
-  if (rowError) redirect(`/admin/products/${productId}?error=image_record`);
+  const { data: deletedImage, error: rowError } = await supabase.from("product_images")
+    .delete()
+    .eq("id", imageId)
+    .eq("product_id", productId)
+    .select("id")
+    .maybeSingle();
+  if (rowError || !deletedImage) redirect(`/admin/products/${productId}?error=image_record`);
   const { error: storageError } = await supabase.storage.from("product-images").remove([image.storage_path]);
   if (storageError) redirect(`/admin/products/${productId}?error=image_storage_orphan`);
   await recordAudit(supabase, user.id, "product.image_removed", "product", productId, { storage_path: image.storage_path });
@@ -229,8 +234,12 @@ export async function saveCategoryAction(formData: FormData) {
   if (!parsed.success) redirect("/admin/categories?error=validation");
   const row = { name: parsed.data.name, slug: parsed.data.slug, description: parsed.data.description, category_group: parsed.data.categoryGroup, sort_order: parsed.data.sortOrder, is_active: parsed.data.active };
   if (parsed.data.id) {
-    const { error } = await supabase.from("categories").update(row).eq("id", parsed.data.id);
-    if (error) redirect("/admin/categories?error=save");
+    const { data: updatedCategory, error } = await supabase.from("categories")
+      .update(row)
+      .eq("id", parsed.data.id)
+      .select("id")
+      .maybeSingle();
+    if (error || !updatedCategory) redirect("/admin/categories?error=save");
     await recordAudit(supabase, user.id, "category.updated", "category", parsed.data.id, { slug: parsed.data.slug });
   } else {
     const { data, error } = await supabase.from("categories").insert(row).select("id").single();
@@ -270,15 +279,18 @@ export async function updateOrderAction(formData: FormData) {
   }
   const deliveryFeePending = currentOrder.fulfillment === "delivery" && parsed.data.deliveryFeePkr === null;
   const deliveryFeePkr = currentOrder.fulfillment === "pickup" ? 0 : (parsed.data.deliveryFeePkr ?? 0);
-  const { error } = await supabase.from("orders").update({
+  const { data: updatedOrder, error } = await supabase.from("orders").update({
     status: parsed.data.status,
     payment_status: parsed.data.paymentStatus,
     delivery_fee_pkr: deliveryFeePkr,
     delivery_fee_pending: deliveryFeePending,
     total_pkr: Math.max(0, Number(currentOrder.subtotal_pkr) - Number(currentOrder.discount_pkr ?? 0)) + deliveryFeePkr,
-  }).eq("id", parsed.data.orderId);
-  if (error) {
-    const code = error.message.includes("Full payment") ? "payment_required" : error.message.toLowerCase().includes("delivery fee") ? "delivery_fee_required" : "update";
+  })
+    .eq("id", parsed.data.orderId)
+    .select("id")
+    .maybeSingle();
+  if (error || !updatedOrder) {
+    const code = error?.message.includes("Full payment") ? "payment_required" : error?.message.toLowerCase().includes("delivery fee") ? "delivery_fee_required" : "update";
     redirect(`/admin/orders/${currentOrder.order_number}?error=${code}`);
   }
   await recordAudit(supabase, user.id, "order.updated", "order", parsed.data.orderId, {
@@ -386,10 +398,14 @@ export async function saveTestimonialAction(formData: FormData) {
       // Keep the original publication date when an already-published testimonial is edited.
       published_at: value.status === "published" ? (existing.published_at ?? new Date().toISOString()) : null,
     };
-    const { error } = await supabase.from("customer_testimonials").update(row).eq("id", value.id);
-    if (error) {
-      const code = error.code === "23505" ? "duplicate_video" : error.code === "42501" ? "access_denied" : "save";
-      console.error("[admin-testimonial] Update failed.", { code: error.code });
+    const { data: updatedTestimonial, error } = await supabase.from("customer_testimonials")
+      .update(row)
+      .eq("id", value.id)
+      .select("id")
+      .maybeSingle();
+    if (error || !updatedTestimonial) {
+      const code = error?.code === "23505" ? "duplicate_video" : error?.code === "42501" ? "access_denied" : "save";
+      console.error("[admin-testimonial] Update failed or matched no row.", { code: error?.code });
       redirect(`/admin/testimonials?error=${code}`);
     }
     await recordAudit(supabase, user.id, "testimonial.updated", "customer_testimonial", value.id, {
@@ -676,12 +692,15 @@ export async function setTestimonialStatusAction(formData: FormData) {
     redirect("/admin?testimonialError=consent_required");
   }
 
-  const { error } = await supabase.from("customer_testimonials").update({
+  const { data: updatedTestimonial, error } = await supabase.from("customer_testimonials").update({
     status,
     published_at: status === "published" ? (current.published_at ?? new Date().toISOString()) : null,
-  }).eq("id", id);
-  if (error) {
-    console.error("[admin-testimonial] Quick status update failed.", { code: error.code });
+  })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error || !updatedTestimonial) {
+    console.error("[admin-testimonial] Quick status update failed or matched no row.", { code: error?.code });
     redirect("/admin?testimonialError=save");
   }
 
@@ -788,7 +807,7 @@ export async function saveStoreSettingsAction(formData: FormData) {
   if (parsed.data.deliveryEnabled && parsed.data.deliveryFeePkr !== null && parsed.data.deliveryFeePkr > 1000000) {
     redirect("/admin/settings?error=delivery_fee");
   }
-  const { error } = await supabase.from("store_settings").update({
+  const { data: updatedSettings, error } = await supabase.from("store_settings").update({
     checkout_enabled: parsed.data.checkoutEnabled,
     pickup_enabled: parsed.data.pickupEnabled,
     delivery_enabled: parsed.data.deliveryEnabled,
@@ -798,9 +817,12 @@ export async function saveStoreSettingsAction(formData: FormData) {
     ubl_bank_enabled: parsed.data.ublBankEnabled,
     updated_by: user.id,
     updated_at: new Date().toISOString(),
-  }).eq("singleton", true);
-  if (error) {
-    console.error("[admin-settings] Store settings save failed.", { code: error.code });
+  })
+    .eq("singleton", true)
+    .select("singleton")
+    .maybeSingle();
+  if (error || !updatedSettings) {
+    console.error("[admin-settings] Store settings save failed or matched no row.", { code: error?.code });
     redirect("/admin/settings?error=save");
   }
   await recordAudit(supabase, user.id, "store.settings_updated", "store_settings", "singleton", {
@@ -882,11 +904,14 @@ export async function setPromoCodeStatusAction(formData: FormData) {
   const id = formText(formData, "id");
   const active = formData.get("isActive") === "true";
   if (!z.uuid().safeParse(id).success) redirect("/admin/promotions?error=invalid_id");
-  const { error } = await supabase.from("promo_codes").update({
+  const { data: updatedPromo, error } = await supabase.from("promo_codes").update({
     is_active: active,
     updated_at: new Date().toISOString(),
-  }).eq("id", id);
-  if (error) redirect("/admin/promotions?error=save");
+  })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error || !updatedPromo) redirect("/admin/promotions?error=save");
   await recordAudit(supabase, user.id, active ? "promo_code.activated" : "promo_code.deactivated", "promo_code", id);
   revalidatePath("/admin/promotions");
   redirect("/admin/promotions?saved=1");
@@ -904,9 +929,13 @@ export async function deleteProductAction(formData: FormData) {
   if (productReadError || !product || imageReadError) redirect("/admin/products?error=delete_read");
 
   // The products -> order_items foreign key uses ON DELETE SET NULL, preserving every order snapshot.
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) {
-    console.error("[admin-product] Permanent delete failed.", { code: error.code });
+  const { data: deletedProduct, error } = await supabase.from("products")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error || !deletedProduct) {
+    console.error("[admin-product] Permanent delete failed or matched no row.", { code: error?.code });
     redirect("/admin/products/" + id + "?error=delete");
   }
 
