@@ -11,7 +11,8 @@ function formatPKR(value: number) {
 }
 
 function stockLabel(stock: number, status: string) {
-  if (status !== "active") return "Draft";
+  if (status === "archived") return "Archived";
+  if (status === "draft") return "Draft";
   if (stock <= 0) return "Out of stock";
   if (stock <= 3) return `${stock} left`;
   return "In stock";
@@ -191,7 +192,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                         <form action={setProductVisibilityAction}><input type="hidden" name="id" value={product.id}/><input type="hidden" name="status" value="draft"/><button type="submit">Hide</button></form>
                       ) : product.status === "draft" ? (
                         <form action={setProductVisibilityAction}><input type="hidden" name="id" value={product.id}/><input type="hidden" name="status" value="active"/><button className="dashboard-publish-action" type="submit">Publish</button></form>
-                      ) : null}
+                      ) : (
+                        <form action={setProductVisibilityAction}><input type="hidden" name="id" value={product.id}/><input type="hidden" name="status" value="active"/><button className="dashboard-publish-action" type="submit">Republish</button></form>
+                      )}
                     </div></td>
                   </tr>
                 ))}
