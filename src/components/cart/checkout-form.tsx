@@ -105,7 +105,7 @@ export function CheckoutForm({ settings, savedAddresses = [], customerEmail = ""
         <div className="checkout-policy-callout"><ShieldCheck size={19}/><div><strong>Full payment is required before order confirmation.</strong><p>Submitting this form does not charge you or confirm your order. The shop will call you, confirm the final amount and availability, then share payment instructions and any requested product pictures or shop details through WhatsApp. Do not transfer money until the shop has contacted you.</p></div></div>
         <div className="checkout-promo-box">
           <label className="checkout-notes-v15">Promo code <span>(optional)</span><input name="promoCode" type="text" maxLength={32} autoCapitalize="characters" autoComplete="off" placeholder="Enter your promo code" /></label>
-          <button className="button button-outline" type="submit" formAction={promoFormAction} disabled={checkingPromo || !cartItems.length}>{checkingPromo ? "Checking…" : "Apply code"}</button>
+          <button className="button button-outline" type="submit" formAction={promoFormAction} formNoValidate disabled={checkingPromo || !cartItems.length}>{checkingPromo ? "Checking…" : "Apply code"}</button>
           {promoState.message && <p className={promoState.valid ? "form-feedback form-feedback-success" : "form-feedback form-feedback-error"} role="status">{promoState.message}</p>}
           {promoState.valid && <p className="checkout-promo-savings">Your discount: Rs. {Number(promoState.discountPkr ?? 0).toLocaleString("en-PK")}</p>}
         </div>
