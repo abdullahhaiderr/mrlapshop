@@ -25,6 +25,7 @@ export default async function EditProductPage({ params, searchParams }: { params
     {query.error === "access_denied" && <p className="form-feedback form-feedback-error">Your owner permission was not accepted by the database. Sign out, sign back in and retry.</p>}
     {query.error && !["duplicate_slug", "duplicate_sku", "access_denied"].includes(query.error) && <p className="form-feedback form-feedback-error">The requested change did not complete. Check the product details and database connection.</p>}
     {query.emailSent && <p className="form-feedback form-feedback-success">New-arrival email sent to {query.emailSent} verified customer{query.emailSent === "1" ? "" : "s"} who opted in.</p>}
+    {query.emailError === "confirmation_required" && <p className="form-feedback form-feedback-error">Confirm the send before starting an email campaign.</p>}
     {query.emailError === "not_configured" && <p className="form-feedback form-feedback-error">Resend is not ready yet. Add RESEND_API_KEY and a verified RESEND_FROM_EMAIL in Vercel, then redeploy.</p>}
     {query.emailError === "no_subscribers" && <p className="form-feedback form-feedback-error">No verified customers have opted in to promotional emails yet. Customers can subscribe at registration or in Account → Email preferences.</p>}
     {query.emailError === "already_sent" && <p className="form-feedback form-feedback-error">This product announcement has already been sent. The dashboard prevents accidental duplicate campaigns.</p>}
@@ -45,6 +46,7 @@ export default async function EditProductPage({ params, searchParams }: { params
           ? <form action={sendProductAnnouncementAction} className="admin-announcement-form">
               <input type="hidden" name="productId" value={id}/>
               <p>Each customer receives an individual email. The sender will be your verified Resend address, and the message links to the official mrlapshop.pk product page.</p>
+              <label className="admin-announcement-confirm"><input type="checkbox" name="confirmSend" value="yes" required/> <span>I confirm this announcement should be sent to all verified customers who opted into promotional emails.</span></label>
               <button className="button button-dark" type="submit">Send new-arrival email to opted-in customers</button>
             </form>
           : <div className="admin-empty">Resend setup is incomplete. Add RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel after verifying your sending domain in Resend, then redeploy.</div>}
