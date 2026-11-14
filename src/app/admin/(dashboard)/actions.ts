@@ -666,32 +666,67 @@ export async function setProductVisibilityAction(formData: FormData) {
   const { supabase, user } = await requireStoreOwner();
   const id = formText(formData, "id");
   const status = formText(formData, "status");
-  if (!z.uuid().safeParse(id).success || !["active", "draft"].includes(status)) {
-    redirect("/admin?productError=validation");
+  const returnTo = formText(formData, "returnTo");
+  const redirectAfterUpdate = () => {
+    if (returnTo === "products") return "/admin/products?productUpdated=1";
+    if (returnTo === "product") return `/admin/products/${id}?republished=1`;
+    return "/admin?productUpdated=1";
+  };
+  const redirectOnError = (code: string) => {
+    if (returnTo === "products") return `/admin/products?error=${code}`;
+    if (returnTo === "product") return `/admin/products/${id}?error=${code}`;
+    return `/admin?productError=${code}`;
+  };
+
+  if (!z.uuid().safeParse(id).success || !["active", "draft", "archived"].includes(status)) {
+    redirect(redirectOnError("validation"));
   }
 
+  // Read first so republishing applies the same requirements as a normal publish
+  // and audit records distinguish a restore from a first-time publication.
   const { data: product, error: readError } = await supabase.from("products")
-    .select("id, title, price_pkr, warranty_months, status, stock")
+    .select("id, title, slug, price_pkr, warranty_months, status")
     .eq("id", id)
     .maybeSingle();
-  if (readError || !product) redirect("/admin?productError=save");
-  if (status === "active" && !canPublishProduct(product.price_pkr, product.warranty_months)) {
-    redirect("/admin?productError=publish_requirements");
+  if (readError || !product) {
+    console.error("[admin-product] Visibility lookup failed.", { code: readError?.code });
+    redirect(redirectOnError("not_found"));
   }
 
-  const { error } = await supabase.from("products").update({ status }).eq("id", id);
-  if (error) {
-    console.error("[admin-product] Quick visibility update failed.", { code: error.code });
-    redirect("/admin?productError=save");
+  if (status === "active" && !canPublishProduct(product.price_pkr, product.warranty_months)) {
+    redirect(redirectOnError("publish_requirements"));
   }
-  await recordAudit(supabase, user.id, status === "active" ? "product.published" : "product.hidden", "product", id, {
+
+  // Select the updated row: PostgREST can return no error but zero rows when
+  // an UPDATE is filtered by RLS. Never show success unless the status changed.
+  const { data: updatedProduct, error } = await supabase.from("products")
+    .update({ status })
+    .eq("id", id)
+    .select("id, status, slug")
+    .maybeSingle();
+  if (error || !updatedProduct) {
+    console.error("[admin-product] Visibility update failed or matched no row.", { code: error?.code });
+    redirect(redirectOnError(error?.code === "42501" ? "access_denied" : "save"));
+  }
+
+  const auditAction = status === "archived"
+    ? "product.archived"
+    : status === "draft"
+      ? "product.hidden"
+      : product.status === "archived" ? "product.republished" : "product.published";
+  await recordAudit(supabase, user.id, auditAction, "product", id, {
+    previous_status: product.status,
     status,
     source: "dashboard",
   });
+
   revalidatePath("/admin");
   revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${id}`);
   revalidatePath("/shop");
-  redirect("/admin?productUpdated=1");
+  revalidatePath("/");
+  revalidatePath(`/product/${updatedProduct.slug}`);
+  redirect(redirectAfterUpdate());
 }
 
 
