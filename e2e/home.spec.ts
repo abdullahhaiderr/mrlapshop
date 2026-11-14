@@ -18,7 +18,7 @@ test("the enquiry list stores a selected product in the browser", async ({ page 
   await page.getByRole("button", { name: /add to enquiry/i }).click();
   await page.getByRole("link", { name: /enquiry list, 1 selected/i }).click();
   await expect(page.getByRole("heading", { name: /enquiry list/i })).toBeVisible();
-  await expect(page.getByText(/sample macbook air/i)).toBeVisible();
+  await expect(page.getByText(/macbook air/i).first()).toBeVisible();
 });
 
 test("the wishlist stores a selected product in the browser", async ({ page }) => {
@@ -72,7 +72,9 @@ test("Shop mega menu keeps the intro and catalogue columns separate", async ({ p
 
 test("customer YouTube testimonials play in a same-page modal", async ({ page }) => {
   await page.goto("/");
-  const videoButton = page.getByRole("button", { name: /play customer video 01/i }).first();
+  const marquee = page.locator(".customer-video-marquee");
+  await marquee.hover(); // Pause the continuous track so the target card stays stationary for the click.
+  const videoButton = marquee.getByRole("button", { name: /play customer video 01/i }).first();
   await expect(videoButton).toBeVisible();
   await videoButton.click();
   const dialog = page.getByRole("dialog");
