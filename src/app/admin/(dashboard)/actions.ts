@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireStoreOwner } from "@/lib/supabase/owner";
 import { canPublishProduct, getAllowedProductImageExtension } from "@/lib/admin/product-rules";
+import { getYouTubeVideoId } from "@/lib/youtube";
 
 const nullableNumber = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) return null;
@@ -300,4 +301,81 @@ export async function saveFulfilmentChecklistAction(formData: FormData) {
   });
   revalidatePath("/admin/orders");
   redirect("/admin/orders?checklistSaved=1");
+}
+
+
+const nullableTestimonialText = z.preprocess((value) => {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  return String(value).trim();
+}, z.string().min(20).max(1200).nullable());
+
+const nullableYouTubeUrl = z.preprocess((value) => {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  return String(value).trim();
+}, z.string().url().max(500).refine((value) => Boolean(getYouTubeVideoId(value)), "Enter a valid YouTube video or Shorts URL.").nullable());
+
+const testimonialSchema = z.object({
+  id: z.preprocess((value) => value === "" || value == null ? null : value, z.uuid().nullable()),
+  displayName: z.string().trim().min(2).max(80),
+  headline: z.string().trim().min(3).max(120),
+  reviewText: nullableTestimonialText,
+  rating: z.preprocess((value) => value === "" || value === null || value === undefined ? null : Number(value), z.number().int().min(1).max(5).nullable()),
+  youtubeUrl: nullableYouTubeUrl,
+  consentToPublish: z.boolean(),
+  status: z.enum(["pending", "published", "rejected"]),
+}).refine((value) => Boolean(value.reviewText || value.youtubeUrl), {
+  message: "Add review text or a YouTube video URL.",
+});
+
+export async function saveTestimonialAction(formData: FormData) {
+  const { supabase, user } = await requireStoreOwner();
+  const parsed = testimonialSchema.safeParse({
+    id: formText(formData, "id") || null,
+    displayName: formText(formData, "displayName"),
+    headline: formText(formData, "headline"),
+    reviewText: formText(formData, "reviewText"),
+    rating: formText(formData, "rating"),
+    youtubeUrl: formText(formData, "youtubeUrl"),
+    consentToPublish: formBoolean(formData.get("consentToPublish")),
+    status: formText(formData, "status"),
+  });
+
+  if (!parsed.success) redirect("/admin/testimonials?error=validation");
+  const value = parsed.data;
+  if (value.status === "published" && !value.consentToPublish) {
+    redirect("/admin/testimonials?error=consent_required");
+  }
+
+  const row = {
+    display_name: value.displayName,
+    headline: value.headline,
+    review_text: value.reviewText,
+    rating: value.rating,
+    youtube_url: value.youtubeUrl,
+    consent_to_publish: value.consentToPublish,
+    status: value.status,
+    published_at: value.status === "published" ? new Date().toISOString() : null,
+  };
+
+  if (value.id) {
+    const { error } = await supabase.from("customer_testimonials").update(row).eq("id", value.id);
+    if (error) redirect("/admin/testimonials?error=save");
+    await recordAudit(supabase, user.id, "testimonial.updated", "customer_testimonial", value.id, {
+      status: value.status,
+      youtube_video_id: value.youtubeUrl ? getYouTubeVideoId(value.youtubeUrl) : null,
+      consent_to_publish: value.consentToPublish,
+    });
+  } else {
+    const { data, error } = await supabase.from("customer_testimonials").insert(row).select("id").single();
+    if (error || !data) redirect("/admin/testimonials?error=save");
+    await recordAudit(supabase, user.id, "testimonial.created", "customer_testimonial", data.id, {
+      status: value.status,
+      youtube_video_id: value.youtubeUrl ? getYouTubeVideoId(value.youtubeUrl) : null,
+      consent_to_publish: value.consentToPublish,
+    });
+  }
+
+  revalidatePath("/admin/testimonials");
+  revalidatePath("/");
+  redirect("/admin/testimonials?saved=1");
 }
