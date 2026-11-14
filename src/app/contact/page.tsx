@@ -4,11 +4,17 @@ import { Clock3, MapPin, Phone, ArrowUpRight } from "lucide-react";
 import { store } from "@/config/store";
 import { ContactForm } from "@/components/contact/contact-form";
 import { SocialLinks } from "@/components/brand/social-links";
+import { getPageSocialMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Contact Mr LapShop",
-  description: "Contact Mr LapShop for laptops, accessories, upgrades and laptop repair in Rawalpindi and Islamabad.",
+  title: "Contact the store",
+  description: "Call, message or visit Mr LapShop for laptop enquiries, accessories, upgrades and repairs at Techno City 2, Rawalpindi.",
   alternates: { canonical: "/contact" },
+  ...getPageSocialMetadata(
+    "Contact Mr LapShop — Visit our Rawalpindi laptop store",
+    "Call or WhatsApp Mr LapShop, or visit the store at Techno City 2, 6th Road, Satellite Town, Rawalpindi.",
+    "/contact",
+  ),
 };
 
 type ContactPageProps = {
