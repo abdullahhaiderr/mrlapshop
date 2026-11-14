@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
 import { Sora, DM_Sans } from "next/font/google";
 import "./globals.css";
-import { AnnouncementBar } from "@/components/layout/announcement-bar";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { WhatsAppFloat } from "@/components/layout/whatsapp-float";
 import { store } from "@/config/store";
 import { getSiteUrl, getStoreStructuredData, serializeJsonLd } from "@/lib/seo";
-import { StorefrontProvider } from "@/components/providers/storefront-provider";
+import { AppShell } from "@/components/layout/app-shell";
 
 const sora = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap", weight: ["400", "500", "600", "700", "800"] });
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap", weight: ["400", "500", "600", "700"] });
@@ -43,14 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body className={`${sora.variable} ${dmSans.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(getStoreStructuredData()) }} />
-        <StorefrontProvider>
-          <a className="skip-link" href="#main-content">Skip to content</a>
-          <AnnouncementBar />
-          <Header />
-          <div id="main-content">{children}</div>
-          <Footer />
-          <WhatsAppFloat />
-        </StorefrontProvider>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
