@@ -16,6 +16,7 @@ export default async function AdminPage() {
 
   const [
     productsCount,
+    categoryCount,
     activeProducts,
     lowStock,
     ordersCount,
@@ -30,6 +31,7 @@ export default async function AdminPage() {
     latestTestimonials,
   ] = await Promise.all([
     supabase.from("products").select("id", { count: "exact", head: true }),
+    supabase.from("categories").select("id", { count: "exact", head: true }),
     supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active").lte("stock", 3),
     supabase.from("orders").select("id", { count: "exact", head: true }),
@@ -182,7 +184,7 @@ export default async function AdminPage() {
             <div className="admin-side-stat"><span>Customer accounts</span><strong>{customers.count ?? "—"}</strong></div>
             <div className="admin-side-stat"><span>Published testimonials</span><strong>{publishedTestimonials.count ?? "—"}</strong></div>
             <div className="admin-side-stat"><span>Pending testimonials</span><strong>{pendingTestimonials.count ?? "—"}</strong></div>
-            <div className="admin-side-stat"><span>Categories</span><strong>{(await supabase.from("categories").select("id", { count: "exact", head: true })).count ?? "—"}</strong></div>
+            <div className="admin-side-stat"><span>Categories</span><strong>{categoryCount.count ?? "—"}</strong></div>
           </section>
 
           <section className="admin-panel">
