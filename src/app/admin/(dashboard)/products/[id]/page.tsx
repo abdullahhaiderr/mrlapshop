@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStoreOwner } from "@/lib/supabase/owner";
 import { ProductEditorForm } from "@/components/admin/product-editor-form";
-import { archiveProductAction, removeProductImageAction, sendProductAnnouncementAction, uploadProductImageAction } from "@/app/admin/(dashboard)/actions";
+import { ProductImageUploader } from "@/components/admin/product-image-uploader";
+import { archiveProductAction, removeProductImageAction, sendProductAnnouncementAction } from "@/app/admin/(dashboard)/actions";
 
 export const metadata = { title: "Edit product | Mr LapShop owner" };
 
@@ -30,7 +31,7 @@ export default async function EditProductPage({ params, searchParams }: { params
     {query.saved && <p className="form-feedback form-feedback-success">Product updated.</p>}{query.created && <p className="form-feedback form-feedback-success">Product created. Add its photos below.</p>}{query.imageUploaded && <p className="form-feedback form-feedback-success">Product photo uploaded.</p>}{query.imageRemoved && <p className="form-feedback form-feedback-success">Product photo removed.</p>}
     <ProductEditorForm product={product} categories={categories ?? []}/>
     <section className="admin-panel admin-image-panel"><div className="admin-panel-head"><div><h2>Product photos</h2><p>JPEG, PNG or WebP. Maximum 8 MB per image.</p></div></div>
-      <form action={uploadProductImageAction} className="admin-upload-form" encType="multipart/form-data"><input type="hidden" name="productId" value={id}/><label className="admin-field"><span>Choose image</span><input type="file" name="image" accept="image/jpeg,image/png,image/webp" required/></label><label className="admin-field"><span>Alt text</span><input name="altText" minLength={4} maxLength={180} placeholder="Describe the actual product photo" required/></label><button className="button button-dark" type="submit">Upload photo</button></form>
+      <ProductImageUploader productId={id} />
       {!imageRows.length ? <div className="admin-empty">No photos have been uploaded for this product.</div> : <div className="admin-image-grid">{imageRows.map((image) => <article key={image.id}><Image src={image.url} alt={image.alt_text} width={800} height={600} sizes="(max-width: 700px) 100vw, 320px"/><p>{image.alt_text}</p><form action={removeProductImageAction}><input type="hidden" name="productId" value={id}/><input type="hidden" name="imageId" value={image.id}/><button className="admin-danger-link" type="submit">Remove photo</button></form></article>)}</div>}
     </section>
     <section className="admin-panel admin-image-panel">
