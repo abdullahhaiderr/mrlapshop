@@ -91,3 +91,16 @@ test("robots.txt advertises the official Mr LapShop sitemap", async ({ request }
   const robots = await response.text();
   expect(robots).toContain("Sitemap: https://mrlapshop.pk/sitemap.xml");
 });
+
+test("checkout attempt keys survive reloads and rotate when customer details change", async ({ page }) => {
+  await page.goto("/checkout");
+  const keyField = page.locator('input[name="idempotencyKey"]');
+  await expect(keyField).toHaveValue(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  const originalKey = await keyField.inputValue();
+
+  await page.reload();
+  await expect(keyField).toHaveValue(originalKey);
+
+  await page.locator('input[name="email"]').fill("retry-check@example.com");
+  await expect(keyField).not.toHaveValue(originalKey);
+});
