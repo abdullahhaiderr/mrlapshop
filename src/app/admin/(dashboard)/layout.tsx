@@ -14,7 +14,7 @@ export default async function OwnerDashboardLayout({ children }: { children: Rea
     <main className="admin-page">
       <div className="admin-wrap admin-shell">
         <aside className="admin-sidebar">
-          <Link href="/admin" className="admin-brand" aria-label="Lapzone Admin overview">
+          <Link href="/admin" className="admin-brand" aria-label="Mr LapShop admin overview">
             <Image src="/images/mr-lapshop-logo.webp" alt="Mr LapShop" width={420} height={164} priority />
           </Link>
           <AdminNav />
