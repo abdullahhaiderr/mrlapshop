@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { requireStoreOwner } from "@/lib/supabase/owner";
 import { getYouTubeVideoId } from "@/lib/youtube";
-import { saveTestimonialAction } from "@/app/admin/(dashboard)/actions";
+import { saveTestimonialAction, setProductVisibilityAction, setTestimonialStatusAction } from "@/app/admin/(dashboard)/actions";
 
 export const metadata = { title: "Owner dashboard | Mr LapShop" };
 
@@ -17,7 +17,11 @@ function stockLabel(stock: number, status: string) {
   return "In stock";
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{
+  testimonialAdded?: string; testimonialUpdated?: string; testimonialError?: string;
+  productUpdated?: string; productError?: string;
+}> }) {
+  const notices = await searchParams;
   const { supabase } = await requireStoreOwner();
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
@@ -48,7 +52,7 @@ export default async function AdminPage() {
     supabase.from("orders").select("total_pkr").eq("payment_status", "paid").gte("created_at", thirtyDaysAgo.toISOString()).limit(1000),
     supabase.from("orders").select("total_pkr, created_at").eq("payment_status", "paid").gte("created_at", sixMonthsAgo.toISOString()).limit(1000),
     supabase.from("customer_testimonials")
-      .select("id, display_name, headline, youtube_url, status, created_at")
+      .select("id, display_name, headline, youtube_url, status, created_at, consent_to_publish")
       .order("created_at", { ascending: false })
       .limit(3),
     supabase.from("products").select("category_id, categories(name)").eq("status", "active").limit(1000),
@@ -86,6 +90,13 @@ export default async function AdminPage() {
 
   return (
     <section className="admin-content admin-dashboard-v2">
+      {notices.testimonialAdded && <p className="form-feedback form-feedback-success" role="status">Customer testimonial added. It is pending until permission to publish is confirmed.</p>}
+      {notices.testimonialUpdated && <p className="form-feedback form-feedback-success" role="status">Testimonial visibility updated.</p>}
+      {notices.testimonialError === "consent_required" && <p className="form-feedback form-feedback-error" role="alert">Customer permission must be confirmed before a testimonial can be shown on your website.</p>}
+      {notices.testimonialError && notices.testimonialError !== "consent_required" && <p className="form-feedback form-feedback-error" role="alert">The testimonial could not be updated. Open Testimonials to review the record.</p>}
+      {notices.productUpdated && <p className="form-feedback form-feedback-success" role="status">Product visibility updated.</p>}
+      {notices.productError === "publish_requirements" && <p className="form-feedback form-feedback-error" role="alert">Complete the product price and warranty decision before publishing.</p>}
+      {notices.productError && notices.productError !== "publish_requirements" && <p className="form-feedback form-feedback-error" role="alert">The product visibility could not be changed. Open Products to review the record.</p>}
       <header className="dashboard-heading">
         <div className="dashboard-heading-copy">
           <h1>Good morning, Store Owner</h1>
@@ -93,7 +104,7 @@ export default async function AdminPage() {
         </div>
         <div className="dashboard-heading-actions">
           <form action="/admin/products" className="dashboard-search">
-            <input name="q" type="search" placeholder="Search products..." aria-label="Search products"/>
+            <input name="q" type="search" placeholder="Search products, orders, customers" aria-label="Search products"/>
             <button type="submit" aria-label="Search"><span>⌕</span></button>
           </form>
           <button className="dashboard-import-button" type="button" disabled title="CSV import is not available yet">Import CSV</button>
@@ -119,7 +130,7 @@ export default async function AdminPage() {
         </article>
         <article className="dashboard-stat-card dashboard-stat-purple">
           <span>Low stock alerts</span>
-          <strong>{lowStock.count ?? 0} alerts</strong>
+          <strong>{lowStock.count ?? 0} laptops</strong>
           <Link href="/admin/products?status=active">Review stock</Link>
         </article>
       </div>
@@ -175,7 +186,14 @@ export default async function AdminPage() {
                     <td>{product.ram_gb ? `${product.ram_gb} GB ${product.ram_type || "RAM"}` : "—"}<small>{product.storage_gb ? `${product.storage_gb} GB ${product.storage_type || "storage"}` : "Storage not set"}</small></td>
                     <td><span className={`dashboard-stock-pill dashboard-stock-${product.status !== "active" ? "draft" : Number(product.stock) <= 3 ? "low" : "ok"}`}>{stockLabel(Number(product.stock), product.status)}</span></td>
                     <td>{product.price_pkr ? formatPKR(Number(product.price_pkr)) : "—"}</td>
-                    <td><div className="dashboard-row-actions"><Link href={`/admin/products/${product.id}`}>Edit</Link>{product.status === "active" && <Link href={`/product/${product.slug}`}>View</Link>}</div></td>
+                    <td><div className="dashboard-row-actions">
+                      <Link href={`/admin/products/${product.id}`}>Edit</Link>
+                      {product.status === "active" ? (
+                        <form action={setProductVisibilityAction}><input type="hidden" name="id" value={product.id}/><input type="hidden" name="status" value="draft"/><button type="submit">Hide</button></form>
+                      ) : product.status === "draft" ? (
+                        <form action={setProductVisibilityAction}><input type="hidden" name="id" value={product.id}/><input type="hidden" name="status" value="active"/><button className="dashboard-publish-action" type="submit">Publish</button></form>
+                      ) : null}
+                    </div></td>
                   </tr>
                 ))}
               </tbody>
@@ -196,7 +214,8 @@ export default async function AdminPage() {
             <input type="hidden" name="headline" value="Customer video testimonial"/>
             <input type="hidden" name="status" value="pending"/>
             <input type="hidden" name="rating" value=""/>
-            <button type="submit">Add feedback</button>
+            <input type="hidden" name="returnTo" value="dashboard"/>
+            <button type="submit">Add to feed</button>
           </form>
           <p className="dashboard-consent-note">New testimonials stay pending until customer permission is confirmed.</p>
           {latestTestimonials.data?.length ? (
@@ -213,8 +232,14 @@ export default async function AdminPage() {
                     ) : <div className="dashboard-video-thumb dashboard-video-text">Written review</div>}
                     <strong>{item.display_name}</strong>
                     <small>{item.headline}</small>
-                    <span className={`dashboard-testimonial-status dashboard-testimonial-${item.status}`}>{item.status === "published" ? "On feed" : item.status}</span>
-                    <Link href="/admin/testimonials">{item.status === "published" ? "Manage" : "Review"}</Link>
+                    <span className={`dashboard-testimonial-status dashboard-testimonial-${item.status}`}>{item.status === "published" ? "On feed" : "Hidden"}</span>
+                    <div className="dashboard-testimonial-actions">
+                      <form action={setTestimonialStatusAction}>
+                        <input type="hidden" name="id" value={item.id}/>
+                        <input type="hidden" name="status" value={item.status === "published" ? "rejected" : "published"}/>
+                        <button type="submit" disabled={item.status !== "published" && !item.consent_to_publish}>{item.status === "published" ? "Remove" : "Show"}</button>
+                      </form>
+                    </div>
                   </article>
                 );
               })}
@@ -224,12 +249,12 @@ export default async function AdminPage() {
 
         <aside className="dashboard-panel dashboard-quick-panel">
           <div className="dashboard-panel-heading"><div><h2>Quick actions</h2><p>Common store tasks</p></div></div>
-          <Link className="dashboard-quick-primary" href="/admin/products/new">Add a new product</Link>
-          <Link href="/admin/categories">Manage product categories</Link>
+          <button className="dashboard-quick-primary" type="button" disabled>Create discount code</button>
+          <button type="button" disabled>Add homepage banner</button>
           <Link href="/admin/products?status=active">Update stock levels</Link>
-          <Link href="/admin/orders">Review and print orders</Link>
-          <Link href="/admin/testimonials">Reply to customer reviews</Link>
-          <Link href="/admin/activity">View store activity</Link>
+          <Link href="/admin/orders">Print invoices</Link>
+          <Link href="/admin/testimonials?tab=reviews">Reply to reviews</Link>
+          <button type="button" disabled>Edit spec comparison</button>
         </aside>
       </div>
     </section>
