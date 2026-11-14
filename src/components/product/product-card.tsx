@@ -26,7 +26,16 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
         {isDemo ? <span className="product-sample-badge">Demo listing</span> : <span className={`product-live-badge${product.stock ? " is-available" : " is-unavailable"}`}>{product.stock ? "Available" : "Out of stock"}</span>}
       </div>
       <Link className="product-image-wrap" href={`/product/${product.slug}`} aria-label={`View ${product.brand} ${product.name}`}>
-        <Image src={product.image} alt={primaryImage?.alt ?? (isDemo ? `Illustrative placeholder image for ${product.brand} ${product.name}` : `Product photo pending for ${product.brand} ${product.name}`)} fill sizes="(max-width: 680px) 90vw, (max-width: 1100px) 42vw, 25vw" className="product-image" />
+        <Image src={product.image} alt={primaryImage?.alt ?? (isDemo ? `Illustrative placeholder image for ${product.brand} ${product.name}` : `Product photo pending for ${product.brand} ${product.name}`)} fill sizes="(max-width: 680px) 90vw, (max-width: 1100px) 42vw, 25vw" className="product-image product-image-primary" />
+        {product.images?.[1] && (
+          <Image
+            src={product.images[1].url}
+            alt={product.images[1].alt || `Additional view of ${product.brand} ${product.name}`}
+            fill
+            sizes="(max-width: 680px) 90vw, (max-width: 1100px) 42vw, 25vw"
+            className="product-image product-image-hover"
+          />
+        )}
         <span className="product-image-action"><ArrowRight size={17} /></span>
       </Link>
       <div className="product-card-body">
