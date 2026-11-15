@@ -1,7 +1,11 @@
 import { store } from "@/config/store";
 
+// Mr LapShop has one public canonical origin. Keeping it fixed prevents
+// preview hosts or placeholder environment values from leaking into SEO URLs.
+const CANONICAL_SITE_URL = "https://www.mrlapshop.pk";
+
 export function getSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "https://www.mrlapshop.pk").replace(/\/+$/, "");
+  return CANONICAL_SITE_URL;
 }
 
 /** Safely serialize JSON-LD so user-controlled text cannot terminate its script element. */
