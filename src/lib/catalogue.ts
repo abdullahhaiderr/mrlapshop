@@ -122,7 +122,7 @@ export async function getPublicCatalogue(): Promise<CatalogueSnapshot> {
 
 export type PublicSitemapProduct = {
   slug: string;
-  createdAt?: string;
+  lastModified?: string;
   images: string[];
 };
 
@@ -142,7 +142,7 @@ export async function getPublicSitemapProducts(): Promise<PublicSitemapProduct[]
     for (let from = 0; ; from += pageSize) {
       const { data, error } = await supabase
         .from("products")
-        .select("slug, created_at, product_images(storage_path)")
+        .select("slug, created_at, updated_at, product_images(storage_path)")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .order("slug", { ascending: true })
@@ -153,6 +153,7 @@ export async function getPublicSitemapProducts(): Promise<PublicSitemapProduct[]
       const rows = (data ?? []) as unknown as Array<{
         slug: string;
         created_at?: string | null;
+        updated_at?: string | null;
         product_images?: Array<{ storage_path: string }> | null;
       }>;
 
@@ -163,7 +164,7 @@ export async function getPublicSitemapProducts(): Promise<PublicSitemapProduct[]
           .filter(Boolean);
         products.push({
           slug: row.slug,
-          createdAt: row.created_at ?? undefined,
+          lastModified: row.updated_at ?? row.created_at ?? undefined,
           images,
         });
       }
