@@ -120,6 +120,64 @@ export async function getPublicCatalogue(): Promise<CatalogueSnapshot> {
   }
 }
 
+export type PublicSitemapProduct = {
+  slug: string;
+  createdAt?: string;
+  images: string[];
+};
+
+/**
+ * Fetch every active public product in pages so the sitemap is not capped
+ * by the storefront's 250-item display limit. Newly published products are
+ * picked up the next time search engines request /sitemap.xml.
+ */
+export async function getPublicSitemapProducts(): Promise<PublicSitemapProduct[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  try {
+    const supabase = await createClient();
+    const pageSize = 500;
+    const products: PublicSitemapProduct[] = [];
+
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("slug, created_at, product_images(storage_path)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .order("slug", { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as unknown as Array<{
+        slug: string;
+        created_at?: string | null;
+        product_images?: Array<{ storage_path: string }> | null;
+      }>;
+
+      for (const row of rows) {
+        if (!row.slug) continue;
+        const images = (row.product_images ?? [])
+          .map((image) => supabase.storage.from("product-images").getPublicUrl(image.storage_path).data.publicUrl)
+          .filter(Boolean);
+        products.push({
+          slug: row.slug,
+          createdAt: row.created_at ?? undefined,
+          images,
+        });
+      }
+
+      if (rows.length < pageSize) break;
+    }
+
+    return products;
+  } catch (error) {
+    console.error("Unable to load active products for the sitemap:", error);
+    return [];
+  }
+}
+
 export async function getPublicProductBySlug(slug: string): Promise<{ product: DemoProduct | null; related: DemoProduct[]; mode: CatalogueMode }> {
   const snapshot = await getPublicCatalogue();
   const product = snapshot.products.find((item) => item.slug === slug) ?? null;
