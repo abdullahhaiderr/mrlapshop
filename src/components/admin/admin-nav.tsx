@@ -14,6 +14,7 @@ const links: DashboardLink[] = [
   { href: "/admin/products", label: "Products", active: (path: string, search: string) => path === "/admin/products" && !search.includes("status=active") },
   { href: "/admin/orders", label: "Orders", active: (path: string) => path.startsWith("/admin/orders") },
   { href: "/admin/products?status=active", label: "Inventory", active: (path: string, search: string) => path === "/admin/products" && search.includes("status=active") },
+  { href: "/admin/categories", label: "Categories", active: (path: string) => path.startsWith("/admin/categories") },
   { href: "/admin/customers", label: "Customers", active: (path: string) => path.startsWith("/admin/customers") },
   { href: "/admin/testimonials", label: "Testimonials", active: (path: string, search: string) => path === "/admin/testimonials" && !search.includes("tab=reviews") },
   { href: "/admin/testimonials?tab=reviews", label: "Reviews", active: (path: string, search: string) => path === "/admin/testimonials" && search.includes("tab=reviews") },
