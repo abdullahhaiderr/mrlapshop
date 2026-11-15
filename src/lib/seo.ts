@@ -1,7 +1,7 @@
 import { store } from "@/config/store";
 
 export function getSiteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "https://mrlapshop.pk").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_SITE_URL || "https://www.mrlapshop.pk").replace(/\/+$/, "");
 }
 
 /** Safely serialize JSON-LD so user-controlled text cannot terminate its script element. */
@@ -100,7 +100,6 @@ export function getStoreStructuredData() {
     ],
   };
 }
-
 
 /** Per-page social metadata keeps Open Graph and X previews aligned with each canonical URL. */
 export function getPageSocialMetadata(title: string, description: string, path: string) {
