@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Check, Heart, Plus, ShoppingCart } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, Heart, Plus, ShoppingCart, Tag } from "lucide-react";
 import type { DemoProduct } from "@/data/products";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { useStorefront } from "@/components/providers/storefront-provider";
@@ -41,7 +41,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
       <div className="product-card-body">
         <div className="product-brand-row">
           <span className="product-brand-identity"><BrandMark name={product.brand} size={19} /><span>{product.brand}</span></span>
-          <span className="product-category-label">{product.category}</span>
+          <span className="product-category-label"><Tag size={11} aria-hidden="true" />{product.category}</span>
         </div>
         <h3><Link href={`/product/${product.slug}`}>{product.name}</Link></h3>
         <div className="spec-list">{product.specs.slice(0, 3).map((spec) => <span key={spec}>{spec}</span>)}</div>
