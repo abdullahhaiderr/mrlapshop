@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import type { DemoProduct } from "@/data/products";
 import { ProductCard } from "@/components/product/product-card";
 import type { PublicCategory, CatalogueMode } from "@/lib/catalogue";
@@ -81,7 +81,7 @@ export function ShopCatalog({ products, categories, mode, connectionWarning, ini
 
   return (
     <div className="container shop-catalog-wrap">
-      <div className="shop-category-shortcuts" aria-label="Shop categories"><span>Browse:</span>{categoryOptions.slice(0, 12).map((item) => <button type="button" key={item.slug} onClick={() => set({ category: filters.category === item.slug ? "" : item.slug })}>{item.name}</button>)}</div>
+      <div className="shop-category-shortcuts" aria-label="Shop categories"><span>Browse:</span>{categoryOptions.slice(0, 12).map((item) => <button type="button" key={item.slug} aria-pressed={filters.category === item.slug} onClick={() => set({ category: filters.category === item.slug ? "" : item.slug })}><Tag size={12} aria-hidden="true" />{item.name}</button>)}</div>
       <div className="shop-toolbar">
         <label className="shop-search-field"><Search size={18} /><span className="sr-only">Search products</span><input value={filters.search} onChange={(event) => set({ search: event.target.value })} placeholder="Search by brand, model or specification" /></label>
         <button className="filter-toggle" type="button" onClick={() => setMobileFiltersOpen((open) => !open)}><SlidersHorizontal size={17} /> Filters</button>
