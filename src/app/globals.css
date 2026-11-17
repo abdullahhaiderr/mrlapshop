@@ -1445,7 +1445,7 @@ h2 em, h1 em { color: #a18e00; font-style: normal; }
   width: 100%;
 }
 .site-header--home-transparent {
-  background: transparent;
+  background: var(--ink-950);
   border-bottom-color: transparent;
   box-shadow: none;
   backdrop-filter: none;
