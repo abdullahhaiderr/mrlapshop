@@ -1527,3 +1527,12 @@ h2 em, h1 em { color: #a18e00; font-style: normal; }
   .customer-video-track { animation: none; transform: none; }
   .customer-video-card, .customer-video-frame img, .customer-video-play { transition: none; }
 }
+
+/* Fix Beast Collection product titles: the dark section's white text color was inherited by white product cards. Keep titles styled like every other product card. */
+.beast-product-grid .product-card h3,
+.beast-product-grid .product-card h3 a {
+  color: var(--ink-900);
+}
+.beast-product-grid .product-card h3 a:hover {
+  color: #877900;
+}
