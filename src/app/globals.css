@@ -2508,3 +2508,61 @@ body:has(.admin-page) .whatsapp-float { display: none; }
   word-break: normal;
   line-height: 1.7;
 }
+
+
+/* Shop category pills: compact, single-line labels with a clear icon cue. */
+.product-category-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  max-width: 52%;
+  min-height: 25px;
+  padding: 4px 9px;
+  overflow: hidden;
+  border: 1px solid #eee5a5;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fffdf0, #fff8c9);
+  color: #756500;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .025em;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+.product-category-label svg { flex: 0 0 11px; }
+.shop-category-shortcuts button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.shop-category-shortcuts button svg { flex: 0 0 12px; color: #887900; }
+.shop-category-shortcuts button[aria-pressed="true"] {
+  border-color: #d7c52c;
+  background: var(--yellow-100);
+  box-shadow: 0 3px 10px rgba(130, 112, 0, .09);
+}
+.shop-category-shortcuts button:hover { transform: translateY(-1px); }
+
+/* Keep the Contact details as open content beside the single form card. */
+.contact-page-grid { align-items: start; }
+.contact-info-panel { min-width: 0; padding: 17px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.contact-form {
+  transform: translateY(0);
+  transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease;
+}
+.contact-form:hover {
+  transform: translateY(-4px);
+  border-color: #e7d85d;
+  box-shadow: 0 22px 52px rgba(11,21,48,.10), 0 5px 16px rgba(255,230,0,.10);
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop-category-shortcuts button, .contact-form { transition: none; }
+  .shop-category-shortcuts button:hover, .contact-form:hover { transform: none; }
+}
