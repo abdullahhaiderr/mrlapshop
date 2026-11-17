@@ -34,7 +34,7 @@ export function ProductCard({ product, compact = false }: ProductCardProps) {
           <span className="product-brand-identity"><BrandMark name={product.brand} size={19} /><span>{product.brand}</span></span>
           <span className="product-category-label">{product.category}</span>
         </div>
-        <h3><Link href={`/product/${product.slug}`}>{product.name}</Link></h3>
+        <h3 style={{ color: "var(--ink-900)" }}><Link href={`/product/${product.slug}`}>{product.name}</Link></h3>
         <div className="spec-list">{product.specs.slice(0, 3).map((spec) => <span key={spec}>{spec}</span>)}</div>
         <div className="product-card-information">
           <span><BadgeCheck size={13} /> {product.warrantyLabel}</span>
