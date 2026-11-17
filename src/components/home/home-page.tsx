@@ -9,6 +9,7 @@ import { store } from "@/config/store";
 import type { CatalogueSnapshot } from "@/lib/catalogue";
 import { ProductCard } from "@/components/product/product-card";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { CustomerVideoSection } from "@/components/home/customer-video-section";
 import { LatestArrivalsMarquee } from "@/components/home/latest-arrivals-marquee";
 import { HeroLaptopCarousel } from "@/components/home/hero-laptop-carousel";
 
@@ -185,6 +186,7 @@ export function HomePage({ catalogue }: { catalogue: CatalogueSnapshot }) {
         </div>
       </section>
 
+      <CustomerVideoSection />
 
       <section className="section-block faq-section">
         <div className="container faq-layout">
