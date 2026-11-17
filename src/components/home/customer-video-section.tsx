@@ -46,6 +46,7 @@ function VideoCard({ video, duplicate = false }: { video: VideoItem; duplicate?:
 }
 
 export function CustomerVideoSection() {
+  const videos: VideoItem[] = [];
   // The former hardcoded video list was intentionally removed from the repository.
   // Keep the testimonial section and its empty state until a managed video source is connected.
 
