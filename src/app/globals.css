@@ -2489,3 +2489,22 @@ body:has(.admin-page) .whatsapp-float { display: none; }
   .checkout-promo-box { grid-template-columns: 1fr; }
   .checkout-promo-box > .button { justify-self: start; }
 }
+
+/* Targeted Beast Collection title and Shop menu description fixes. */
+.beast-product-grid .product-card h3,
+.beast-product-grid .product-card h3 a {
+  color: var(--ink-900);
+}
+.beast-product-grid .product-card h3 a:hover {
+  color: #877900;
+}
+.site-header .mega-menu-expanded .mega-menu-intro p {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.7;
+}
